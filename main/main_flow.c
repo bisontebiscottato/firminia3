@@ -74,8 +74,8 @@ static void main_flow_task(void* pvParameters)
         display_manager_update(DISPLAY_STATE_BLE_ADVERTISING, 0);
         ble_manager_start_advertising();
         ble_manager_set_config_callback(on_ble_config_received);
-        ESP_LOGI(TAG, "Waiting up to 30 seconds for BLE configuration...");
-        vTaskDelay(pdMS_TO_TICKS(30000));
+        ESP_LOGI(TAG, "Waiting up to 5 seconds for BLE configuration...");
+        vTaskDelay(pdMS_TO_TICKS(5000));
         config_valid = is_config_valid();
         if (!config_valid) {
             ESP_LOGW(TAG, "No valid config received. Proceeding with default values.");
@@ -132,7 +132,7 @@ while (1) {
         display_manager_update(DISPLAY_STATE_NO_PRACTICES, 0);
     }
     ESP_LOGI(TAG, "Waiting 10 seconds before next API check...");
-    vTaskDelay(pdMS_TO_TICKS(10000));
+    vTaskDelay(pdMS_TO_TICKS(100000));
 }
 
 }
