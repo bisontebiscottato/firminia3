@@ -1,6 +1,8 @@
 #ifndef DISPLAY_MANAGER_H
 #define DISPLAY_MANAGER_H
 
+#include "lvgl.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
