@@ -1,6 +1,6 @@
 set(srcs 
     "main.c"
-    "config.c"
+    "device_config.c"
     )
 
     idf_component_register(SRCS ${srcs}

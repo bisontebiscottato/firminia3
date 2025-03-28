@@ -15,15 +15,11 @@
 #include "nvs.h"
 
 //Include locali
-#include "config.h"
+#include "device_config.h"
 
 
 /* TAG progetto */
 static const char *TAG = "Main";
-
-
-
-
 
 void app_main(void)
 {
@@ -34,6 +30,8 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
     
+    // Load configuration from NVS, including dynamic parameters
     load_config_from_nvs();
     
+    // Here you can use the configuration values (e.g., configure Wi-Fi, display settings, etc.)
 }

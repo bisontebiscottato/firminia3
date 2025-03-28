@@ -1,4 +1,4 @@
 # ignore ALL files in ANY directory named temp
 build/
 managed_components/
-config.h
+device_config.h

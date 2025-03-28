@@ -2,14 +2,14 @@
 
 ### Hardware Required
 
-* ESP32 development board: [Seeed XIAO Esp32-S3 1.47 LCD](https://www.seeedstudio.com/Seeed-XIAO-ESP32C3-p-5431.html).)
-* Display: Waveshare 240×240, [General 1.28inch Round LCD Display Module](https://www.waveshare.com/1.28inch-lcd-module.htm).), 65K RGB
-* Switch connected to a GPIO for triggering the BLE advertising
+* ESP32 development board: [Seeed XIAO Esp32-S3 1.47 LCD](https://www.seeedstudio.com/Seeed-XIAO-ESP32C3-p-5431.html)
+* Display: Waveshare 240×240, [General 1.28inch Round LCD Display Module](https://www.waveshare.com/1.28inch-lcd-module.htm), 65K RGB
+* Switch (normally open) connected to a GPIO for triggering the BLE advertising
 * A USB cable for power supply and programming
 
 ### Software Required
 
-* An app to control BLE 4.2 connection from smartphone: 
+* An app to control BLE 4.2 connection from smartphone: BLE Scanner for Android
 
 ### JSON format to configure Firminia
 Throught BLE connection you need to send a JSON structure to configure Firminia for WIFI and API access.
