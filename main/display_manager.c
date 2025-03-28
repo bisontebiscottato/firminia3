@@ -1,6 +1,7 @@
 #include "display_manager.h"
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/lock.h>
 #include <sys/param.h>
 #include "freertos/FreeRTOS.h"
@@ -14,7 +15,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "lvgl.h"
-#include "esp_heap_caps.h"  // Per allocare su PSRAM
+#include "esp_heap_caps.h" 
 
 #include "esp_lcd_gc9a01.h"
 
@@ -22,7 +23,7 @@ static const char *TAG = "display";
 
 // Using SPI2 in the example
 #define LCD_HOST  SPI2_HOST
-#define LCD_PIXEL_CLOCK_HZ     (15 * 1000 * 1000)
+#define LCD_PIXEL_CLOCK_HZ     (20 * 1000 * 1000)
 #define LCD_BK_LIGHT_ON_LEVEL  1
 #define LCD_BK_LIGHT_OFF_LEVEL !LCD_BK_LIGHT_ON_LEVEL
 #define PIN_NUM_SCLK           7
@@ -43,15 +44,51 @@ static const char *TAG = "display";
 #define LCD_PARAM_BITS         8
 
 // LVGL buffer configuration
-#define LVGL_DRAW_BUF_LINES    30  // Puoi ridurlo se serve meno memoria
+#define LVGL_DRAW_BUF_LINES    80  // Puoi ridurlo se serve meno memoria
 #define LVGL_TICK_PERIOD_MS    2
 #define LVGL_TASK_MAX_DELAY_MS 500
 #define LVGL_TASK_MIN_DELAY_MS 1
 #define LVGL_TASK_STACK_SIZE   (8 * 1024)
 #define LVGL_TASK_PRIORITY     2
 
+extern const lv_font_t lv_font_montserrat_28;
+
 // Mutex per proteggere le chiamate LVGL
 static _lock_t lvgl_api_lock;
+
+// Puntatore globale alla label LVGL per mostrare il testo degli stati
+static lv_obj_t * state_label = NULL;
+// Buffer globale per il nuovo testo da visualizzare
+static char new_text[256] = {0};
+
+// Callback per aggiornare l'opacità della label durante l'animazione fade out/in
+static void anim_opacity_cb(void * var, int32_t v) {
+    lv_obj_set_style_opa(state_label, v, 0);
+}
+
+// Callback per animazione di fade in
+static void fade_in_anim_cb(void * var, int32_t v) {
+    lv_obj_set_style_opa(state_label, v, 0);
+}
+
+// Avvia l'animazione di fade in (da 0 a 255 in 200ms)
+static void fade_in_anim_start(void) {
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, state_label);
+    lv_anim_set_exec_cb(&a, fade_in_anim_cb);
+    lv_anim_set_values(&a, 0, 255);
+    lv_anim_set_time(&a, 200);
+    lv_anim_start(&a);
+}
+
+// Callback chiamata al termine dell'animazione di fade out.
+// Qui viene aggiornato il testo e poi avviato il fade in.
+static void fade_out_anim_ready_cb(lv_anim_t * a) {
+    lv_label_set_text(state_label, new_text);
+    lv_obj_align(state_label, LV_ALIGN_CENTER, 0, 0);
+    fade_in_anim_start();
+}
 
 static bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
 {
@@ -60,11 +97,13 @@ static bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_
     return false;
 }
 
-/* Callback per aggiornare la rotazione del display in LVGL */
+
+/* Rotate display callback (già presente) */
 static void lvgl_port_update_callback(lv_display_t *disp)
 {
     esp_lcd_panel_handle_t panel_handle = lv_display_get_user_data(disp);
     lv_display_rotation_t rotation = lv_display_get_rotation(disp);
+
     switch (rotation) {
         case LV_DISPLAY_ROTATION_0:
             esp_lcd_panel_swap_xy(panel_handle, false);
@@ -93,9 +132,7 @@ static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
     int offsetx2 = area->x2;
     int offsety1 = area->y1;
     int offsety2 = area->y2;
-    // Per i display SPI con RGB565 big-endian, esegue lo swap dei byte
     lv_draw_sw_rgb565_swap(px_map, (offsetx2 + 1 - offsetx1) * (offsety2 + 1 - offsety1));
-    // Copia il contenuto del buffer nell'area specificata del display
     esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, px_map);
 }
 
@@ -114,18 +151,26 @@ static void lvgl_port_task(void *arg)
         time_till_next_ms = lv_timer_handler();
         _lock_release(&lvgl_api_lock);
         time_till_next_ms = MAX(time_till_next_ms, time_threshold_ms);
-        // Utilizza vTaskDelay per integrarsi con FreeRTOS
         vTaskDelay(pdMS_TO_TICKS(time_till_next_ms));
     }
 }
 
+// Aggiungi questo prima di spi_bus_config_t buscfg...
+
 void display_manager_init(void)
 {
     ESP_LOGI(TAG, "Heap disponibile prima dell'inizializzazione display: %lu bytes", (unsigned long) esp_get_free_heap_size());
-    
+
+    // Configura GPIO retroilluminazione come output e spegnila subito
+    gpio_config_t bk_gpio_config = {
+        .pin_bit_mask = (1ULL << PIN_NUM_BK_LIGHT),
+        .mode = GPIO_MODE_OUTPUT,
+    };
+    ESP_ERROR_CHECK(gpio_config(&bk_gpio_config));
+
     ESP_LOGI(TAG, "Turn off LCD backlight");
     gpio_set_level(PIN_NUM_BK_LIGHT, LCD_BK_LIGHT_OFF_LEVEL);
-    
+
     ESP_LOGI(TAG, "Initialize SPI bus");
     spi_bus_config_t buscfg = {
         .sclk_io_num = PIN_NUM_SCLK,
@@ -164,37 +209,53 @@ void display_manager_init(void)
     ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel_handle, true));
 
+    // Riempimento nero iniziale (schermo diviso in blocchi)
+    ESP_LOGI(TAG, "Clear LCD with black color");
+    const size_t lines_per_transfer = 20; // Numero linee per trasferimento (modificabile se necessario)
+    uint16_t *black_buffer = heap_caps_calloc(LCD_H_RES * lines_per_transfer, sizeof(uint16_t), MALLOC_CAP_DMA);
+    assert(black_buffer); // verifica allocazione
+
+    for (int y = 0; y < LCD_V_RES; y += lines_per_transfer) {
+        int lines = MIN(lines_per_transfer, LCD_V_RES - y);
+        ESP_ERROR_CHECK(esp_lcd_panel_draw_bitmap(panel_handle, 0, y, LCD_H_RES, y + lines, black_buffer));
+    }
+
+    heap_caps_free(black_buffer);
+
+    // breve pausa per permettere la completa cancellazione dello schermo
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    // Accendi retroilluminazione solo ora
+    ESP_LOGI(TAG, "Turn on LCD backlight");
+    gpio_set_level(PIN_NUM_BK_LIGHT, LCD_BK_LIGHT_ON_LEVEL);
+
+
     ESP_LOGI(TAG, "Initialize LVGL library");
     lv_init();
 
-    // Crea un display LVGL con le risoluzioni specificate
+    // Crea il display LVGL
     lv_display_t *display = lv_display_create(LCD_H_RES, LCD_V_RES);
 
-    // Alloca i buffer di disegno nella PSRAM (se disponibile) per ridurre l'uso dell'heap principale
+    // Alloca i buffer di disegno in PSRAM per ridurre l'uso dell'heap principale
     size_t draw_buffer_sz = LCD_H_RES * LVGL_DRAW_BUF_LINES * sizeof(lv_color16_t);
     void *buf1 = heap_caps_malloc(draw_buffer_sz, MALLOC_CAP_SPIRAM);
     if (!buf1) {
-        ESP_LOGE(TAG, "Allocazione PSRAM per draw buffer 1 fallita");
-        // Fallback a normale malloc
+        ESP_LOGE(TAG, "Allocazione PSRAM per draw buffer 1 fallita, uso malloc()");
         buf1 = malloc(draw_buffer_sz);
     }
     void *buf2 = heap_caps_malloc(draw_buffer_sz, MALLOC_CAP_SPIRAM);
     if (!buf2) {
-        ESP_LOGE(TAG, "Allocazione PSRAM per draw buffer 2 fallita");
+        ESP_LOGE(TAG, "Allocazione PSRAM per draw buffer 2 fallita, uso malloc()");
         buf2 = malloc(draw_buffer_sz);
     }
     assert(buf1 && buf2);
 
-    // Inizializza i buffer di disegno per LVGL
     lv_display_set_buffers(display, buf1, buf2, draw_buffer_sz, LV_DISPLAY_RENDER_MODE_PARTIAL);
-    // Associa il pannello LCD al display (lo user data contiene il handle del pannello)
     lv_display_set_user_data(display, panel_handle);
     lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
     lv_display_set_flush_cb(display, lvgl_flush_cb);
 
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
-    // Eventualmente, attiva la retroilluminazione se necessario
-    // gpio_set_level(PIN_NUM_BK_LIGHT, LCD_BK_LIGHT_ON_LEVEL);
 
     ESP_LOGI(TAG, "Install LVGL tick timer");
     const esp_timer_create_args_t lvgl_tick_timer_args = {
@@ -219,37 +280,83 @@ void display_manager_init(void)
 
 void display_manager_update(display_state_t state, int practices_count)
 {
+    // Aggiorna il testo in base allo stato e logga il messaggio
     switch (state) {
         case DISPLAY_STATE_WARMING_UP:
             ESP_LOGI(TAG, "[DISPLAY] Warming up...");
+            strcpy(new_text, "Warming up...");
             break;
         case DISPLAY_STATE_BLE_ADVERTISING:
             ESP_LOGI(TAG, "[DISPLAY] BLE Advertising - waiting for config...");
+            strcpy(new_text, "BLE Active\nwaiting for\nconfig...");
             break;
         case DISPLAY_STATE_CONFIG_UPDATED:
             ESP_LOGI(TAG, "[DISPLAY] Configuration updated!");
+            strcpy(new_text, "Configuration\nupdated!");
             break;
         case DISPLAY_STATE_WIFI_CONNECTING:
             ESP_LOGI(TAG, "[DISPLAY] Connecting to Wi-Fi...");
+            strcpy(new_text, "Connecting\nto Wi-Fi...");
             break;
         case DISPLAY_STATE_CHECKING_API:
             ESP_LOGI(TAG, "[DISPLAY] Checking API...");
+            strcpy(new_text, "Checking API...");
             break;
         case DISPLAY_STATE_SHOW_PRACTICES:
-            ESP_LOGI(TAG, "[DISPLAY] %d practices to sign!", practices_count);
+            ESP_LOGI(TAG, "[DISPLAY] %d practices\nto sign!", practices_count);
+            snprintf(new_text, sizeof(new_text), "%d practices\nto sign!", practices_count);
             break;
         case DISPLAY_STATE_NO_PRACTICES:
             ESP_LOGI(TAG, "[DISPLAY] No practices to sign.");
+            strcpy(new_text, "No practices to sign.");
             break;
         case DISPLAY_STATE_NO_WIFI_SLEEPING:
             ESP_LOGI(TAG, "[DISPLAY] No Wi-Fi - sleeping...");
+            strcpy(new_text, "No Wi-Fi. \n Sleeping...");
             break;
         case DISPLAY_STATE_API_ERROR:
             ESP_LOGI(TAG, "[DISPLAY] API error: unable to determine practices.");
+            strcpy(new_text, "API error!");
             break;
         default:
             ESP_LOGW(TAG, "[DISPLAY] Unknown state.");
+            strcpy(new_text, "Unknown state.");
             break;
     }
-    // Qui puoi aggiornare il display fisico usando le API di esp_lcd se necessario.
+    
+    // Se la label non esiste, la creiamo con fade in iniziale
+    if (state_label == NULL) {
+        state_label = lv_label_create(lv_scr_act());
+        // Imposta lo sfondo dello schermo a nero
+        lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
+        // Imposta il font Montserrat 28, colore bianco e allineamento centrale
+        lv_obj_set_style_text_font(state_label, &lv_font_montserrat_28, 0);
+        lv_obj_set_style_text_color(state_label, lv_color_white(), 0);
+        lv_obj_set_style_text_align(state_label, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_align(state_label, LV_ALIGN_CENTER, 0, 0);
+        lv_label_set_text(state_label, new_text);
+        // Imposta opacità iniziale a 0 e avvia il fade in
+        lv_obj_set_style_opa(state_label, 0, 0);
+        // Fade in
+        lv_anim_t a_in;
+        lv_anim_init(&a_in);
+        lv_anim_set_var(&a_in, state_label);
+        lv_anim_set_exec_cb(&a_in, anim_opacity_cb);
+        lv_anim_set_values(&a_in, 0, 255);
+        lv_anim_set_time(&a_in, 200);
+        lv_anim_start(&a_in);
+    } else {
+        // Se la label esiste, avvia il fade out da 255 a 0
+        lv_anim_t a_out;
+        lv_anim_init(&a_out);
+        lv_anim_set_var(&a_out, state_label);
+        lv_anim_set_exec_cb(&a_out, anim_opacity_cb);
+        lv_anim_set_values(&a_out, 255, 0);
+        lv_anim_set_time(&a_out, 200);
+        lv_anim_set_ready_cb(&a_out, fade_out_anim_ready_cb);
+        lv_anim_start(&a_out);
+    }
+    
+    ESP_LOGI(TAG, "[DISPLAY] Stato aggiornato: %d, testo: \"%s\"", state, new_text);
 }

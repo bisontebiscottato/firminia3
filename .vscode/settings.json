@@ -12,7 +12,8 @@
     ],
     "files.associations": {
         "nvs_flash.h": "c",
-        "device_config.h": "c"
+        "device_config.h": "c",
+        "task.h": "c"
     },
     "idf.flashType": "UART",
     "idf.portWin": "COM3"
