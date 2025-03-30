@@ -304,23 +304,23 @@ void display_manager_update(display_state_t state, int practices_count)
             break;
         case DISPLAY_STATE_SHOW_PRACTICES:
             if (practices_count == 1) {
-                ESP_LOGI(TAG, "[DISPLAY] 1 practice to sign!");
-                snprintf(new_text, sizeof(new_text), "1\npractice\nto sign!");
+                ESP_LOGI(TAG, "[DISPLAY] 1 dossier to sign!");
+                snprintf(new_text, sizeof(new_text), "1\ndossier\nto sign!");
             } else {
-                ESP_LOGI(TAG, "[DISPLAY] %d practices to sign!", practices_count);
-                snprintf(new_text, sizeof(new_text), "%d\npractices\nto sign!", practices_count);
+                ESP_LOGI(TAG, "[DISPLAY] %d dossier to sign!", practices_count);
+                snprintf(new_text, sizeof(new_text), "%d\ndossiers\nto sign!", practices_count);
             }
             break;
         case DISPLAY_STATE_NO_PRACTICES:
-            ESP_LOGI(TAG, "[DISPLAY] No practices to sign.");
-            strcpy(new_text, LV_SYMBOL_OK "\nNo practices\nto sign.\nRelax.");
+            ESP_LOGI(TAG, "[DISPLAY] No dossiers to sign.");
+            strcpy(new_text, LV_SYMBOL_OK "\nNo dossier\nto sign.\nRelax.");
             break;
         case DISPLAY_STATE_NO_WIFI_SLEEPING:
             ESP_LOGI(TAG, "[DISPLAY] No Wi-Fi - sleeping...");
             strcpy(new_text, LV_SYMBOL_CLOSE "\nNo Wi-Fi\nsleeping...");
             break;
         case DISPLAY_STATE_API_ERROR:
-            ESP_LOGI(TAG, "[DISPLAY] API error: unable to determine practices.");
+            ESP_LOGI(TAG, "[DISPLAY] API error: unable to determine dossiers.");
             strcpy(new_text, LV_SYMBOL_WARNING "\nAPI error!");
             break;
         default:
