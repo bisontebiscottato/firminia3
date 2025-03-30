@@ -44,7 +44,7 @@ static const char *TAG = "display";
 #define LCD_PARAM_BITS         8
 
 // LVGL buffer configuration
-#define LVGL_DRAW_BUF_LINES    80  // Puoi ridurlo se serve meno memoria
+#define LVGL_DRAW_BUF_LINES    60  // Puoi ridurlo se serve meno memoria
 #define LVGL_TICK_PERIOD_MS    2
 #define LVGL_TASK_MAX_DELAY_MS 500
 #define LVGL_TASK_MIN_DELAY_MS 1
@@ -283,44 +283,49 @@ void display_manager_update(display_state_t state, int practices_count)
     // Aggiorna il testo in base allo stato e logga il messaggio
     switch (state) {
         case DISPLAY_STATE_WARMING_UP:
-            ESP_LOGI(TAG, "[DISPLAY] Warming up...");
-            strcpy(new_text, "Warming up...");
+            ESP_LOGI(TAG, "[DISPLAY] Warming up... ⏰");
+            strcpy(new_text, LV_SYMBOL_POWER "\nWarming up...");
             break;
         case DISPLAY_STATE_BLE_ADVERTISING:
             ESP_LOGI(TAG, "[DISPLAY] BLE Advertising - waiting for config...");
-            strcpy(new_text, "BLE Active\nwaiting for\nconfig...");
+            strcpy(new_text, LV_SYMBOL_BLUETOOTH "\nBLE Active\nwaiting for\nconfig...");
             break;
         case DISPLAY_STATE_CONFIG_UPDATED:
             ESP_LOGI(TAG, "[DISPLAY] Configuration updated!");
-            strcpy(new_text, "Configuration\nupdated!");
+            strcpy(new_text, LV_SYMBOL_OK " Configuration\nupdated!");
             break;
         case DISPLAY_STATE_WIFI_CONNECTING:
             ESP_LOGI(TAG, "[DISPLAY] Connecting to Wi-Fi...");
-            strcpy(new_text, "Connecting\nto Wi-Fi...");
+            strcpy(new_text, LV_SYMBOL_WIFI "\nConnecting\nto Wi-Fi...");
             break;
         case DISPLAY_STATE_CHECKING_API:
             ESP_LOGI(TAG, "[DISPLAY] Checking API...");
-            strcpy(new_text, "Checking API...");
+            strcpy(new_text, LV_SYMBOL_REFRESH "\nChecking API...");
             break;
         case DISPLAY_STATE_SHOW_PRACTICES:
-            ESP_LOGI(TAG, "[DISPLAY] %d practices\nto sign!", practices_count);
-            snprintf(new_text, sizeof(new_text), "%d practices\nto sign!", practices_count);
+            if (practices_count == 1) {
+                ESP_LOGI(TAG, "[DISPLAY] 1 practice to sign!");
+                snprintf(new_text, sizeof(new_text), "1\npractice\nto sign!");
+            } else {
+                ESP_LOGI(TAG, "[DISPLAY] %d practices to sign!", practices_count);
+                snprintf(new_text, sizeof(new_text), "%d\npractices\nto sign!", practices_count);
+            }
             break;
         case DISPLAY_STATE_NO_PRACTICES:
             ESP_LOGI(TAG, "[DISPLAY] No practices to sign.");
-            strcpy(new_text, "No practices to sign.");
+            strcpy(new_text, LV_SYMBOL_OK "\nNo practices\nto sign.\nRelax.");
             break;
         case DISPLAY_STATE_NO_WIFI_SLEEPING:
             ESP_LOGI(TAG, "[DISPLAY] No Wi-Fi - sleeping...");
-            strcpy(new_text, "No Wi-Fi. \n Sleeping...");
+            strcpy(new_text, LV_SYMBOL_CLOSE "\nNo Wi-Fi\nsleeping...");
             break;
         case DISPLAY_STATE_API_ERROR:
             ESP_LOGI(TAG, "[DISPLAY] API error: unable to determine practices.");
-            strcpy(new_text, "API error!");
+            strcpy(new_text, LV_SYMBOL_WARNING "\nAPI error!");
             break;
         default:
             ESP_LOGW(TAG, "[DISPLAY] Unknown state.");
-            strcpy(new_text, "Unknown state.");
+            strcpy(new_text, LV_SYMBOL_BACKSPACE "\nUnknown state.");
             break;
     }
     

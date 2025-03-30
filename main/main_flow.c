@@ -132,7 +132,7 @@ while (1) {
         display_manager_update(DISPLAY_STATE_NO_PRACTICES, 0);
     }
     ESP_LOGI(TAG, "Waiting 10 seconds before next API check...");
-    vTaskDelay(pdMS_TO_TICKS(100000));
+    vTaskDelay(pdMS_TO_TICKS(10000));
 }
 
 }

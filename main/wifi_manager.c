@@ -38,6 +38,10 @@ void wifi_manager_init(void)
     esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler, NULL, NULL);
     esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, NULL, NULL);
     esp_wifi_set_mode(WIFI_MODE_STA);
+        // Ottimizzazioni Wi-Fi consigliate
+        esp_wifi_set_max_tx_power(84);  // Massima potenza
+        esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
+        
     esp_wifi_start();
     ESP_LOGI(TAG, "Wi-Fi initialization completed.");
 }
