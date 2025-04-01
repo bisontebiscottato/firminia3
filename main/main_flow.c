@@ -75,7 +75,7 @@ static void main_flow_task(void* pvParameters)
         ble_manager_start_advertising();
         ble_manager_set_config_callback(on_ble_config_received);
         ESP_LOGI(TAG, "Waiting up to 5 seconds for BLE configuration...");
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(50000));
         config_valid = is_config_valid();
         if (!config_valid) {
             ESP_LOGW(TAG, "No valid config received. Proceeding with default values.");

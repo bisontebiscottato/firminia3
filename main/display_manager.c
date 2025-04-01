@@ -300,7 +300,7 @@ void display_manager_update(display_state_t state, int practices_count)
             break;
         case DISPLAY_STATE_CHECKING_API:
             ESP_LOGI(TAG, "[DISPLAY] Checking API...");
-            strcpy(new_text, LV_SYMBOL_REFRESH "\nChecking API...");
+            strcpy(new_text, LV_SYMBOL_REFRESH "\nChecking\nAPI...");
             break;
         case DISPLAY_STATE_SHOW_PRACTICES:
             if (practices_count == 1) {

@@ -20,7 +20,7 @@
 
 static const char *TAG = "API_Manager";
 #define BUFFER_SIZE 8000
-int numberOfElements = 0;
+int totalElements = 0;
 
 // Funzione per estrarre il corpo JSON dalla risposta HTTP
 const char *extract_json_body(const char *response) {
@@ -176,13 +176,13 @@ int api_manager_check_practices(void)
         goto exit;
     }
     
-    cJSON *numberElem = cJSON_GetObjectItem(json, "numberOfElements");
+    cJSON *numberElem = cJSON_GetObjectItem(json, "totalElements");
     if (cJSON_IsNumber(numberElem)) {
-        numberOfElements = numberElem->valueint;
-        practices_found = numberOfElements;
-        ESP_LOGI(TAG, "Number of Elements: %d", numberOfElements);
+        totalElements = numberElem->valueint;
+        practices_found = totalElements;
+        ESP_LOGI(TAG, "Number of Elements: %d", totalElements);
     } else {
-        ESP_LOGE(TAG, "JSON does not contain a valid 'numberOfElements' field");
+        ESP_LOGE(TAG, "JSON does not contain a valid 'totalElements' field");
     }
     cJSON_Delete(json);
     
@@ -197,5 +197,5 @@ exit:
     if (buffer) {
         free(buffer);
     }
-    return numberOfElements;
+    return totalElements;
 }
