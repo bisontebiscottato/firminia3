@@ -13,7 +13,8 @@
     "files.associations": {
         "nvs_flash.h": "c",
         "device_config.h": "c",
-        "task.h": "c"
+        "task.h": "c",
+        "wifi_manager.h": "c"
     },
     "idf.flashType": "UART",
     "idf.portWin": "COM6"

@@ -22,20 +22,24 @@ static uint16_t json_buffer_index = 0;
 // Callback opzionale per notificare eventi di configurazione (se usata dal main_flow)
 static ble_config_callback_t s_config_callback = NULL;
 
+// Variabili per gestire la connessione BLE (ora gestite tramite GATTS)
+static esp_bd_addr_t current_conn_addr;
+static bool ble_is_connected = false;
+
 /* --- DEFINIZIONI PER LA CREAZIONE DEL SERVIZIO GATT --- */
 // UUID per la dichiarazione del Primary Service (16-bit standard: 0x2800)
 static uint16_t primary_service_uuid = 0x2800;
 // UUID per la dichiarazione della caratteristica (16-bit standard: 0x2803)
 static uint16_t char_decl_uuid = 0x2803;
-// UUID per il CCCD (16-bit standard: 0x2902)
+// UUID per la dichiarazione del CCCD (16-bit standard: 0x2902)
 static uint16_t primary_cccd_uuid = 0x2902;
 
-// UUID del servizio (in formato 128-bit). In questo esempio il servizio ha un UUID personalizzato.
+// UUID del servizio (formato 128-bit). In questo esempio il servizio ha un UUID personalizzato.
 static uint8_t service_uuid128[16] = {
     0xFB, 0x34, 0x9B, 0x5F, 0x80, 0x00, 0x00, 0x80,
     0x00, 0x10, 0x00, 0x00, 0xF0, 0xFF, 0x00, 0x00
 };
-// UUID della caratteristica di configurazione (in formato 128-bit)
+// UUID della caratteristica di configurazione (formato 128-bit)
 static uint8_t config_char_uuid[16] = {
     0xFB, 0x34, 0x9B, 0x5F, 0x80, 0x00, 0x00, 0x80,
     0x00, 0x10, 0x00, 0x00, 0x01, 0xFF, 0x00, 0x00
@@ -185,10 +189,9 @@ static void gatts_write_event_handler(esp_gatts_cb_event_t event,
 }
 
 /**
- * @brief Gestore degli eventi GATT.
+ * @brief Gestore degli eventi GATTS.
  *
- * Include il caso di registrazione dell'applicazione per avviare la creazione della tabella attributi,
- * la gestione della scrittura e altri eventi.
+ * Si occupa della registrazione, creazione della tabella degli attributi, gestione delle scritture e degli eventi di connessione/disconnessione.
  */
 static void gatts_event_handler(esp_gatts_cb_event_t event, 
                                 esp_gatt_if_t gatts_if, 
@@ -197,7 +200,6 @@ static void gatts_event_handler(esp_gatts_cb_event_t event,
     switch (event) {
         case ESP_GATTS_REG_EVT:
             ESP_LOGI(TAG, "Registrazione GATTS completata, gatts_if: %d", gatts_if);
-            // Creazione della tabella attributi (4 handle) per il servizio GATT
             esp_ble_gatts_create_attr_tab(gatt_db, gatts_if, 4, 0);
             break;
         case ESP_GATTS_CREAT_ATTR_TAB_EVT:
@@ -207,16 +209,24 @@ static void gatts_event_handler(esp_gatts_cb_event_t event,
                 ESP_LOGE(TAG, "Numero di handle creati non corrisponde: %d/4", param->add_attr_tab.num_handle);
             } else {
                 ESP_LOGI(TAG, "Tabella attributi creata con successo.");
-                // Avvia il servizio GATT usando l'handle del servizio (primo attributo)
                 esp_ble_gatts_start_service(param->add_attr_tab.handles[0]);
             }
+            break;
+        case ESP_GATTS_CONNECT_EVT:
+            ESP_LOGI(TAG, "BLE device connesso (GATTS)!");
+            memcpy(current_conn_addr, param->connect.remote_bda, ESP_BD_ADDR_LEN);
+            ble_is_connected = true;
+            break;
+        case ESP_GATTS_DISCONNECT_EVT:
+            ESP_LOGI(TAG, "BLE device disconnesso (GATTS)!");
+            ble_is_connected = false;
             break;
         case ESP_GATTS_WRITE_EVT:
             ESP_LOGI(TAG, "GATT Write Event ricevuto.");
             gatts_write_event_handler(event, gatts_if, param);
             break;
         default:
-            ESP_LOGD(TAG, "Evento GATT non gestito: %d", event);
+            ESP_LOGD(TAG, "Evento GATTS non gestito: %d", event);
             break;
     }
 }
@@ -288,7 +298,6 @@ void ble_manager_init(void)
     ESP_LOGI(TAG, "✅ Stack Bluetooth inizializzato con successo.");
 }
 
-
 /**
  * @brief Avvia l’advertising BLE.
  */
@@ -316,6 +325,17 @@ void ble_manager_stop_advertising(void)
     ESP_LOGI(TAG, "Interruzione dell'advertising BLE...");
     if (esp_ble_gap_stop_advertising() != ESP_OK) {
         ESP_LOGE(TAG, "❌ Interruzione dell'advertising BLE fallita");
+    }
+}
+
+/**
+ * @brief Disconnette attivamente il dispositivo BLE connesso, se presente.
+ */
+void ble_manager_disconnect(void)
+{
+    if (ble_is_connected) {
+        ESP_LOGI(TAG, "Disconnessione del dispositivo BLE attivo.");
+        esp_ble_gap_disconnect(current_conn_addr);
     }
 }
 
