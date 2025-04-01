@@ -292,7 +292,7 @@ void display_manager_update(display_state_t state, int practices_count)
             break;
         case DISPLAY_STATE_CONFIG_UPDATED:
             ESP_LOGI(TAG, "[DISPLAY] Configuration updated!");
-            strcpy(new_text, LV_SYMBOL_OK " Configuration\nupdated!");
+            strcpy(new_text, LV_SYMBOL_OK "\nConfiguration\nupdated!");
             break;
         case DISPLAY_STATE_WIFI_CONNECTING:
             ESP_LOGI(TAG, "[DISPLAY] Connecting to Wi-Fi...");

@@ -45,7 +45,10 @@ static void on_ble_config_received(const char* json_str)
     s_current_state = STATE_CONFIG_UPDATED;
     display_manager_update(DISPLAY_STATE_CONFIG_UPDATED, 0);
     ESP_LOGI(TAG, "Configuration updated via BLE.");
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    vTaskDelay(pdMS_TO_TICKS(3000));
+    
+    // Riavvia il sistema per applicare le nuove configurazioni
+    esp_restart();
 }
 
 // Simple check: if wifi_ssid equals the default, configuration is considered invalid.
@@ -75,7 +78,7 @@ static void main_flow_task(void* pvParameters)
         ble_manager_start_advertising();
         ble_manager_set_config_callback(on_ble_config_received);
         ESP_LOGI(TAG, "Waiting up to 5 seconds for BLE configuration...");
-        vTaskDelay(pdMS_TO_TICKS(50000));
+        vTaskDelay(pdMS_TO_TICKS(500000));
         config_valid = is_config_valid();
         if (!config_valid) {
             ESP_LOGW(TAG, "No valid config received. Proceeding with default values.");
