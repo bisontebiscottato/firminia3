@@ -326,6 +326,11 @@ void display_manager_update(display_state_t state, int practices_count)
             break;
     }
     
+    // Cancella eventuali animazioni pendenti per evitare accumuli
+    if(state_label != NULL) {
+        lv_anim_del(state_label, NULL);
+    }
+    
     if (state_label == NULL) {
         state_label = lv_label_create(lv_scr_act());
         lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), 0);
@@ -336,6 +341,7 @@ void display_manager_update(display_state_t state, int practices_count)
         lv_obj_align(state_label, LV_ALIGN_CENTER, 0, 0);
         lv_label_set_text(state_label, new_text);
         lv_obj_set_style_opa(state_label, 0, 0);
+        // Avvia il fade in
         lv_anim_t a_in;
         lv_anim_init(&a_in);
         lv_anim_set_var(&a_in, state_label);
@@ -344,6 +350,7 @@ void display_manager_update(display_state_t state, int practices_count)
         lv_anim_set_time(&a_in, 200);
         lv_anim_start(&a_in);
     } else {
+        // Fade out e poi aggiornamento
         lv_anim_t a_out;
         lv_anim_init(&a_out);
         lv_anim_set_var(&a_out, state_label);
@@ -356,3 +363,4 @@ void display_manager_update(display_state_t state, int practices_count)
     
     ESP_LOGI(TAG, "[DISPLAY] Stato aggiornato: %d, testo: \"%s\"", state, new_text);
 }
+

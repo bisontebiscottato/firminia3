@@ -128,7 +128,7 @@ static void main_flow_task(void* pvParameters)
          }
     }
 
-    // Variabile per il rilevamento del rising edge
+    // Inizializza la variabile per il rilevamento del rising edge
     int last_button_state = gpio_get_level(BUTTON_GPIO);
 
     while (1) {
@@ -146,7 +146,21 @@ static void main_flow_task(void* pvParameters)
               }
          }
 
-         // Esegue il controllo API e aggiorna lo stato
+         // Attendi API_CHECK_INTERVAL_MS, ma controlla periodicamente il tasto
+         uint32_t elapsed = 0;
+         while (elapsed < API_CHECK_INTERVAL_MS) {
+             // Se siamo in STATE_SHOW_PRACTICES o STATE_NO_PRACTICES e viene rilevato il rising edge...
+             if ((s_current_state == STATE_SHOW_PRACTICES || s_current_state == STATE_NO_PRACTICES) &&
+                 immediate_check_triggered(&last_button_state))
+             {
+                 ESP_LOGI(TAG, "Rising edge detected: triggering immediate API check.");
+                 break;  // Esce dal ciclo per eseguire subito il controllo API
+             }
+             vTaskDelay(pdMS_TO_TICKS(BUTTON_POLL_INTERVAL_MS));
+             elapsed += BUTTON_POLL_INTERVAL_MS;
+         }
+
+         // Esegui un solo controllo API per ciclo
          s_current_state = STATE_CHECKING_API;
          display_manager_update(DISPLAY_STATE_CHECKING_API, 0);
          int practices = api_manager_check_practices();
@@ -163,39 +177,14 @@ static void main_flow_task(void* pvParameters)
              display_manager_update(DISPLAY_STATE_NO_PRACTICES, 0);
          }
 
-         // Ora, invece di aspettare 10 secondi in una vTaskDelay fissa,
-         // eseguiamo un ciclo che dura API_CHECK_INTERVAL_MS, controllando periodicamente il tasto
-         uint32_t elapsed = 0;
-         while (elapsed < API_CHECK_INTERVAL_MS) {
-             if ((s_current_state == STATE_SHOW_PRACTICES || s_current_state == STATE_NO_PRACTICES) &&
-                 immediate_check_triggered(&last_button_state)) {
-                 break;  // Esce dal ciclo e forzare il nuovo controllo API
-             }
-             vTaskDelay(pdMS_TO_TICKS(BUTTON_POLL_INTERVAL_MS));
-             elapsed += BUTTON_POLL_INTERVAL_MS;
-         }
-
-         // Esegue il controllo API immediatamente (a seguito di pressione o scadenza del tempo)
-         s_current_state = STATE_CHECKING_API;
-         display_manager_update(DISPLAY_STATE_CHECKING_API, 0);
-         practices = api_manager_check_practices();
-         if (practices < 0) {
-             ESP_LOGE(TAG, "Immediate API call failed.");
-             display_manager_update(DISPLAY_STATE_API_ERROR, 0);
-         }
-         else if (practices > 0) {
-             s_current_state = STATE_SHOW_PRACTICES;
-             display_manager_update(DISPLAY_STATE_SHOW_PRACTICES, practices);
-         }
-         else {
-             s_current_state = STATE_NO_PRACTICES;
-             display_manager_update(DISPLAY_STATE_NO_PRACTICES, 0);
-         }
+         // Breve delay per dare tempo agli altri task (es. LVGL) e alimentare il watchdog
+         vTaskDelay(pdMS_TO_TICKS(100));
     }
 
     ESP_LOGE(TAG, "Main flow task exiting unexpectedly.");
     vTaskDelete(NULL);
 }
+
 
 void app_main(void)
 {
@@ -206,7 +195,6 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    // Configura il GPIO del tasto: logica invertita, il livello è normalmente 0 (pull-down), 1 quando premuto.
     gpio_config_t btn_config = {
          .pin_bit_mask = (1ULL << BUTTON_GPIO),
          .mode = GPIO_MODE_INPUT,
@@ -216,7 +204,6 @@ void app_main(void)
     };
     gpio_config(&btn_config);
 
-    // Inizializza i moduli BLE, Wi-Fi e display
     ble_manager_init();
     wifi_manager_init();
     display_manager_init();
