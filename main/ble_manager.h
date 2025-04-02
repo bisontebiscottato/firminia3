@@ -50,6 +50,8 @@ void ble_manager_stop_advertising(void);
  */
 void ble_manager_set_config_callback(ble_config_callback_t callback);
 
+void ble_manager_disconnect(void);
+
 #ifdef __cplusplus
 }
 #endif

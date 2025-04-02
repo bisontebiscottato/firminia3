@@ -15,7 +15,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "lvgl.h"
-#include "esp_heap_caps.h" 
+#include "esp_heap_caps.h"
 
 #include "esp_lcd_gc9a01.h"
 
@@ -23,7 +23,7 @@ static const char *TAG = "display";
 
 // Using SPI2 in the example
 #define LCD_HOST  SPI2_HOST
-#define LCD_PIXEL_CLOCK_HZ     (20 * 1000 * 1000)
+#define LCD_PIXEL_CLOCK_HZ     (15 * 1000 * 1000)
 #define LCD_BK_LIGHT_ON_LEVEL  1
 #define LCD_BK_LIGHT_OFF_LEVEL !LCD_BK_LIGHT_ON_LEVEL
 #define PIN_NUM_SCLK           7
@@ -44,7 +44,7 @@ static const char *TAG = "display";
 #define LCD_PARAM_BITS         8
 
 // LVGL buffer configuration
-#define LVGL_DRAW_BUF_LINES    60  // Puoi ridurlo se serve meno memoria
+#define LVGL_DRAW_BUF_LINES    40  // Puoi ridurlo se serve meno memoria
 #define LVGL_TICK_PERIOD_MS    2
 #define LVGL_TASK_MAX_DELAY_MS 500
 #define LVGL_TASK_MIN_DELAY_MS 1
@@ -90,13 +90,13 @@ static void fade_out_anim_ready_cb(lv_anim_t * a) {
     fade_in_anim_start();
 }
 
-static bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
+static bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, 
+                                      esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
 {
     lv_display_t *disp = (lv_display_t *)user_ctx;
     lv_display_flush_ready(disp);
     return false;
 }
-
 
 /* Rotate display callback (già presente) */
 static void lvgl_port_update_callback(lv_display_t *disp)
@@ -133,7 +133,12 @@ static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
     int offsety1 = area->y1;
     int offsety2 = area->y2;
     lv_draw_sw_rgb565_swap(px_map, (offsetx2 + 1 - offsetx1) * (offsety2 + 1 - offsety1));
-    esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, px_map);
+    
+    esp_err_t err = esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, px_map);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "panel_gc9a01_draw_bitmap failed: %d", err);
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
 }
 
 static void increase_lvgl_tick(void *arg)
@@ -145,21 +150,21 @@ static void lvgl_port_task(void *arg)
 {
     ESP_LOGI(TAG, "Starting LVGL task");
     uint32_t time_till_next_ms = 0;
-    uint32_t time_threshold_ms = 1000 / CONFIG_FREERTOS_HZ;
     while (1) {
         _lock_acquire(&lvgl_api_lock);
         time_till_next_ms = lv_timer_handler();
         _lock_release(&lvgl_api_lock);
-        time_till_next_ms = MAX(time_till_next_ms, time_threshold_ms);
+        if (time_till_next_ms < LVGL_TASK_MIN_DELAY_MS) {
+            time_till_next_ms = LVGL_TASK_MIN_DELAY_MS;
+        }
         vTaskDelay(pdMS_TO_TICKS(time_till_next_ms));
     }
 }
 
-// Aggiungi questo prima di spi_bus_config_t buscfg...
-
 void display_manager_init(void)
 {
-    ESP_LOGI(TAG, "Heap disponibile prima dell'inizializzazione display: %lu bytes", (unsigned long) esp_get_free_heap_size());
+    ESP_LOGI(TAG, "Heap disponibile prima dell'inizializzazione display: %lu bytes", 
+             (unsigned long) esp_get_free_heap_size());
 
     // Configura GPIO retroilluminazione come output e spegnila subito
     gpio_config_t bk_gpio_config = {
@@ -209,11 +214,10 @@ void display_manager_init(void)
     ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel_handle, true));
 
-    // Riempimento nero iniziale (schermo diviso in blocchi)
     ESP_LOGI(TAG, "Clear LCD with black color");
-    const size_t lines_per_transfer = 20; // Numero linee per trasferimento (modificabile se necessario)
+    const size_t lines_per_transfer = 20;
     uint16_t *black_buffer = heap_caps_calloc(LCD_H_RES * lines_per_transfer, sizeof(uint16_t), MALLOC_CAP_DMA);
-    assert(black_buffer); // verifica allocazione
+    assert(black_buffer);
 
     for (int y = 0; y < LCD_V_RES; y += lines_per_transfer) {
         int lines = MIN(lines_per_transfer, LCD_V_RES - y);
@@ -221,22 +225,15 @@ void display_manager_init(void)
     }
 
     heap_caps_free(black_buffer);
-
-    // breve pausa per permettere la completa cancellazione dello schermo
     vTaskDelay(pdMS_TO_TICKS(100));
 
-    // Accendi retroilluminazione solo ora
     ESP_LOGI(TAG, "Turn on LCD backlight");
     gpio_set_level(PIN_NUM_BK_LIGHT, LCD_BK_LIGHT_ON_LEVEL);
-
 
     ESP_LOGI(TAG, "Initialize LVGL library");
     lv_init();
 
-    // Crea il display LVGL
     lv_display_t *display = lv_display_create(LCD_H_RES, LCD_V_RES);
-
-    // Alloca i buffer di disegno in PSRAM per ridurre l'uso dell'heap principale
     size_t draw_buffer_sz = LCD_H_RES * LVGL_DRAW_BUF_LINES * sizeof(lv_color16_t);
     void *buf1 = heap_caps_malloc(draw_buffer_sz, MALLOC_CAP_SPIRAM);
     if (!buf1) {
@@ -275,12 +272,12 @@ void display_manager_init(void)
     ESP_LOGI(TAG, "Create LVGL task");
     xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
 
-    ESP_LOGI(TAG, "Heap disponibile dopo inizializzazione display: %lu bytes", (unsigned long) esp_get_free_heap_size());
+    ESP_LOGI(TAG, "Heap disponibile dopo inizializzazione display: %lu bytes", 
+             (unsigned long) esp_get_free_heap_size());
 }
 
 void display_manager_update(display_state_t state, int practices_count)
 {
-    // Aggiorna il testo in base allo stato e logga il messaggio
     switch (state) {
         case DISPLAY_STATE_WARMING_UP:
             ESP_LOGI(TAG, "[DISPLAY] Warming up... ⏰");
@@ -329,21 +326,16 @@ void display_manager_update(display_state_t state, int practices_count)
             break;
     }
     
-    // Se la label non esiste, la creiamo con fade in iniziale
     if (state_label == NULL) {
         state_label = lv_label_create(lv_scr_act());
-        // Imposta lo sfondo dello schermo a nero
         lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), 0);
         lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
-        // Imposta il font Montserrat 28, colore bianco e allineamento centrale
         lv_obj_set_style_text_font(state_label, &lv_font_montserrat_28, 0);
         lv_obj_set_style_text_color(state_label, lv_color_white(), 0);
         lv_obj_set_style_text_align(state_label, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_align(state_label, LV_ALIGN_CENTER, 0, 0);
         lv_label_set_text(state_label, new_text);
-        // Imposta opacità iniziale a 0 e avvia il fade in
         lv_obj_set_style_opa(state_label, 0, 0);
-        // Fade in
         lv_anim_t a_in;
         lv_anim_init(&a_in);
         lv_anim_set_var(&a_in, state_label);
@@ -352,7 +344,6 @@ void display_manager_update(display_state_t state, int practices_count)
         lv_anim_set_time(&a_in, 200);
         lv_anim_start(&a_in);
     } else {
-        // Se la label esiste, avvia il fade out da 255 a 0
         lv_anim_t a_out;
         lv_anim_init(&a_out);
         lv_anim_set_var(&a_out, state_label);
