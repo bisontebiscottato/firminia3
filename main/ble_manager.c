@@ -1,4 +1,5 @@
 #include <string.h>
+#include <ctype.h>
 #include "esp_bt.h"
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
@@ -89,6 +90,59 @@ static esp_gatts_attr_db_t gatt_db[4] =
     }
 };
 
+
+// SSID: non vuoto, lunghezza minima (ad esempio 1 carattere)
+static bool validate_ssid(const char *ssid) {
+    return ssid && strlen(ssid) >= 1;
+}
+
+// Password: nessun controllo particolare, accetta anche stringhe vuote
+static bool validate_password(const char *password) {
+    return password != NULL;
+}
+
+// Server: deve contenere almeno un punto
+static bool validate_server(const char *server) {
+    return server && strchr(server, '.') != NULL;
+}
+
+// Port: deve essere composta esclusivamente da cifre e il valore numerico deve essere tra 1 e 65535
+static bool validate_port(const char *port_str) {
+    if (!port_str || strlen(port_str) == 0)
+        return false;
+    for (size_t i = 0; i < strlen(port_str); i++) {
+        if (!isdigit((unsigned char)port_str[i])) {
+            return false;
+        }
+    }
+    int port = atoi(port_str);
+    return (port >= 1 && port <= 65535);
+}
+
+// URL: deve iniziare con "https://"
+static bool validate_url(const char *url) {
+    if (!url)
+        return false;
+    return (strncmp(url, "https://", 8) == 0);
+}
+
+// Token: deve contenere solo numeri e lettere
+static bool validate_token(const char *token) {
+    if (!token)
+        return false;
+    for (size_t i = 0; i < strlen(token); i++) {
+        if (!isalnum((unsigned char)token[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// User: nessun controllo particolare
+static bool validate_user(const char *user) {
+    return user != NULL;
+}
+
 /**
  * @brief Processa i dati JSON ricevuti via BLE.
  *
@@ -112,50 +166,76 @@ static void ble_process_received_data(uint8_t *data, uint16_t length)
         return;
     }
 
-    // Aggiorna le variabili globali di configurazione se il JSON contiene i relativi campi
-    cJSON *item = cJSON_GetObjectItem(json, "ssid");
-    if (item && item->valuestring) {
-        strcpy(wifi_ssid, item->valuestring);
+    // Estrai i campi attesi
+    cJSON *ssid_item = cJSON_GetObjectItemCaseSensitive(json, "ssid");
+    cJSON *password_item = cJSON_GetObjectItemCaseSensitive(json, "password");
+    cJSON *server_item = cJSON_GetObjectItemCaseSensitive(json, "server");
+    cJSON *port_item = cJSON_GetObjectItemCaseSensitive(json, "port");
+    cJSON *url_item = cJSON_GetObjectItemCaseSensitive(json, "url");
+    cJSON *token_item = cJSON_GetObjectItemCaseSensitive(json, "token");
+    cJSON *user_item = cJSON_GetObjectItemCaseSensitive(json, "user");
+
+    bool valid = true;
+
+    if (!cJSON_IsString(ssid_item) || !validate_ssid(ssid_item->valuestring)) {
+        ESP_LOGE(TAG, "❌ Campo 'ssid' mancante o non valido");
+        valid = false;
     }
-    item = cJSON_GetObjectItem(json, "password");
-    if (item && item->valuestring) {
-        strcpy(wifi_password, item->valuestring);
+    if (!cJSON_IsString(password_item) || !validate_password(password_item->valuestring)) {
+        ESP_LOGE(TAG, "❌ Campo 'password' mancante (anche vuoto va bene, ma deve essere presente)");
+        valid = false;
     }
-    item = cJSON_GetObjectItem(json, "server");
-    if (item && item->valuestring) {
-        strcpy(web_server, item->valuestring);
+    if (!cJSON_IsString(server_item) || !validate_server(server_item->valuestring)) {
+        ESP_LOGE(TAG, "❌ Campo 'server' mancante o non valido");
+        valid = false;
     }
-    item = cJSON_GetObjectItem(json, "port");
-    if (item && item->valuestring) {
-        strcpy(web_port, item->valuestring);
+    if (!cJSON_IsString(port_item) || !validate_port(port_item->valuestring)) {
+        ESP_LOGE(TAG, "❌ Campo 'port' mancante o non valido");
+        valid = false;
     }
-    item = cJSON_GetObjectItem(json, "url");
-    if (item && item->valuestring) {
-        strcpy(web_url, item->valuestring);
+    if (!cJSON_IsString(url_item) || !validate_url(url_item->valuestring)) {
+        ESP_LOGE(TAG, "❌ Campo 'url' mancante o non valido (deve iniziare con \"https://\")");
+        valid = false;
     }
-    item = cJSON_GetObjectItem(json, "token");
-    if (item && item->valuestring) {
-        strcpy(api_token, item->valuestring);
+    if (!cJSON_IsString(token_item) || !validate_token(token_item->valuestring)) {
+        ESP_LOGE(TAG, "❌ Campo 'token' mancante o non valido (solo numeri e lettere)");
+        valid = false;
     }
-    item = cJSON_GetObjectItem(json, "user");
-    if (item && item->valuestring) {
-        strcpy(askmesign_user, item->valuestring);
+    if (!cJSON_IsString(user_item) || !validate_user(user_item->valuestring)) {
+        ESP_LOGE(TAG, "❌ Campo 'user' mancante");
+        valid = false;
     }
 
-    // Salva la nuova configurazione in NVS
+    if (!valid) {
+        ESP_LOGE(TAG, "❌ JSON non valido. Ignoro la configurazione.");
+        cJSON_Delete(json);
+        return;
+    }
+
+    // Se tutti i controlli sono superati, aggiorna le variabili globali
+    strcpy(wifi_ssid, ssid_item->valuestring);
+    strcpy(wifi_password, password_item->valuestring);
+    strcpy(web_server, server_item->valuestring);
+    strcpy(web_port, port_item->valuestring);
+    strcpy(web_url, url_item->valuestring);
+    strcpy(api_token, token_item->valuestring);
+    strcpy(askmesign_user, user_item->valuestring);
+
+    // Salva la configurazione in NVS
     save_config_to_nvs();
     ESP_LOGI(TAG, "✅ Configurazione aggiornata e salvata in NVS!");
 
     // Aggiorna la UI per notificare l'aggiornamento della configurazione
     display_manager_update(DISPLAY_STATE_CONFIG_UPDATED, 0);
 
-    // Se è stata definita una callback aggiuntiva, notifica il nuovo JSON
+    // Se è stata definita una callback aggiuntiva, chiamala con i dati ricevuti
     if (s_config_callback) {
         s_config_callback((char *)data);
     }
     
     cJSON_Delete(json);
 }
+
 
 /**
  * @brief Gestisce l'evento di scrittura GATT.
