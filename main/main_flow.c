@@ -166,12 +166,15 @@ static void main_flow_task(void* pvParameters)
          s_current_state = STATE_CHECKING_API;
          display_manager_update(DISPLAY_STATE_CHECKING_API, 0);
          int practices = api_manager_check_practices();
+         ESP_LOGI(TAG, "practices = %d", practices);
+
          if (practices < 0) {
              ESP_LOGE(TAG, "API call failed (network issue, server error, or certificate issue).");
              display_manager_update(DISPLAY_STATE_API_ERROR, 0);
          }
          else if (practices > 0) {
              s_current_state = STATE_SHOW_PRACTICES;
+             ESP_LOGI(TAG, "Switching state to SHOW_PRACTICES");
              display_manager_update(DISPLAY_STATE_SHOW_PRACTICES, practices);
          }
          else {
