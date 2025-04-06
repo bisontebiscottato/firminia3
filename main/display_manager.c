@@ -393,7 +393,7 @@ void display_manager_update(display_state_t state, int practices_count) {
     }
     else {
         if(state_arc != NULL) {
-            lv_anim_del(state_arc, arc_anim_cb);
+            lv_anim_del(state_arc, NULL);
             lv_obj_del(state_arc);
             state_arc = NULL;
         }
