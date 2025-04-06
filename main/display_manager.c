@@ -18,6 +18,8 @@
 #include "esp_heap_caps.h"
 #include "esp_lcd_gc9a01.h"
 
+
+
 static const char *TAG = "display";
 
 // Using SPI2 in the example
@@ -51,6 +53,9 @@ static const char *TAG = "display";
 #define LVGL_TASK_PRIORITY     2
 
 extern const lv_font_t lv_font_montserrat_28;
+extern const lv_font_t lv_font_montserrat_48;
+
+static lv_obj_t *number_label = NULL;
 
 // Mutex per proteggere le chiamate LVGL
 static _lock_t lvgl_api_lock;
@@ -272,70 +277,63 @@ void display_manager_init(void) {
 }
 
 void display_manager_update(display_state_t state, int practices_count) {
-    // Aggiorna il testo della label in base allo stato
+    // Aggiorna il testo della label principale
     switch (state) {
         case DISPLAY_STATE_WARMING_UP:
-            ESP_LOGI(TAG, "[DISPLAY] Warming up... ⏰");
-            strcpy(new_text, LV_SYMBOL_POWER "\nWarming up...");
+            strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...");
             break;
         case DISPLAY_STATE_BLE_ADVERTISING:
-            ESP_LOGI(TAG, "[DISPLAY] BLE Advertising - waiting for config...");
             strcpy(new_text, LV_SYMBOL_BLUETOOTH "\nBLE Active\nwaiting for\nconfig...");
             break;
         case DISPLAY_STATE_CONFIG_UPDATED:
-            ESP_LOGI(TAG, "[DISPLAY] Configuration updated!");
             strcpy(new_text, LV_SYMBOL_OK "\nConfiguration\nupdated!");
             break;
         case DISPLAY_STATE_WIFI_CONNECTING:
-            ESP_LOGI(TAG, "[DISPLAY] Connecting to Wi-Fi...");
             strcpy(new_text, LV_SYMBOL_WIFI "\nConnecting\nto Wi-Fi...");
             break;
         case DISPLAY_STATE_CHECKING_API:
-            ESP_LOGI(TAG, "[DISPLAY] Checking API...");
             strcpy(new_text, LV_SYMBOL_REFRESH "\nChecking\nAPI...");
             break;
         case DISPLAY_STATE_SHOW_PRACTICES:
             if (practices_count == 1) {
-                ESP_LOGI(TAG, "[DISPLAY] 1 dossier to sign!");
-                snprintf(new_text, sizeof(new_text), "1\ndossier\nto sign!");
+                strcpy(new_text, "\r\ndossier\nto sign!");
             } else {
-                ESP_LOGI(TAG, "[DISPLAY] %d dossier to sign!", practices_count);
-                snprintf(new_text, sizeof(new_text), "%d\ndossiers\nto sign!", practices_count);
+                strcpy(new_text, "\r\ndossiers\nto sign!");
             }
             break;
         case DISPLAY_STATE_NO_PRACTICES:
-            ESP_LOGI(TAG, "[DISPLAY] No dossiers to sign.");
             strcpy(new_text, LV_SYMBOL_OK "\nNo dossier\nto sign.\nRelax.");
             break;
         case DISPLAY_STATE_NO_WIFI_SLEEPING:
-            ESP_LOGI(TAG, "[DISPLAY] No Wi-Fi - sleeping...");
             strcpy(new_text, LV_SYMBOL_CLOSE "\nNo Wi-Fi\nsleeping...");
             break;
         case DISPLAY_STATE_API_ERROR:
-            ESP_LOGI(TAG, "[DISPLAY] API error: unable to determine dossiers.");
             strcpy(new_text, LV_SYMBOL_WARNING "\nAPI error!");
             break;
         default:
-            ESP_LOGW(TAG, "[DISPLAY] Unknown state.");
             strcpy(new_text, LV_SYMBOL_BACKSPACE "\nUnknown state.");
             break;
     }
-    
-    // Aggiorna la label di testo (fade in/fade out)
-    if (state_label != NULL) {
-        lv_anim_del(state_label, NULL);
-    }
-    
-    if (state_label == NULL) {
+
+    if(state_label == NULL) {
         state_label = lv_label_create(lv_scr_act());
         lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), 0);
         lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
         lv_obj_set_style_text_font(state_label, &lv_font_montserrat_28, 0);
         lv_obj_set_style_text_color(state_label, lv_color_white(), 0);
         lv_obj_set_style_text_align(state_label, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_align(state_label, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_align(state_label, LV_ALIGN_CENTER, 0, 20);
+
+        number_label = lv_label_create(lv_scr_act());
+        lv_obj_set_style_text_font(number_label, &lv_font_montserrat_48, 0);
+        lv_obj_set_style_text_color(number_label, lv_color_white(), 0);
+        lv_obj_set_style_text_align(number_label, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_align(number_label, LV_ALIGN_CENTER, 0, -30);
+        lv_obj_add_flag(number_label, LV_OBJ_FLAG_HIDDEN);
+
         lv_label_set_text(state_label, new_text);
         lv_obj_set_style_opa(state_label, 0, 0);
+
         lv_anim_t a_in;
         lv_anim_init(&a_in);
         lv_anim_set_var(&a_in, state_label);
@@ -343,7 +341,8 @@ void display_manager_update(display_state_t state, int practices_count) {
         lv_anim_set_values(&a_in, 0, 255);
         lv_anim_set_time(&a_in, 200);
         lv_anim_start(&a_in);
-    } else {
+    }
+    else {
         lv_anim_t a_out;
         lv_anim_init(&a_out);
         lv_anim_set_var(&a_out, state_label);
@@ -353,32 +352,31 @@ void display_manager_update(display_state_t state, int practices_count) {
         lv_anim_set_ready_cb(&a_out, fade_out_anim_ready_cb);
         lv_anim_start(&a_out);
     }
-    
-    // *** Aggiornamento dell'arco animato lungo il bordo ***
-    // L'arco viene creato e animato solo per gli stati specificati.
-     // *** Aggiornamento dell'arco animato lungo il bordo ***
-    // L'arco viene creato e animato solo per gli stati specificati.
-    if (state == DISPLAY_STATE_WARMING_UP ||
-        state == DISPLAY_STATE_BLE_ADVERTISING ||
-        state == DISPLAY_STATE_WIFI_CONNECTING ||
-        state == DISPLAY_STATE_CHECKING_API) {
 
-        // Se l'arco non esiste, crealo e avvia l'animazione
-        if (state_arc == NULL) {
+    // Gestisci la visualizzazione del numero in grande solo nello stato SHOW_PRACTICES
+    if (state == DISPLAY_STATE_SHOW_PRACTICES) {
+        lv_label_set_text_fmt(number_label, "%d", practices_count);
+        lv_obj_clear_flag(number_label, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(number_label, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    // Gestione arco (rimasta invariata)
+    if(state == DISPLAY_STATE_WARMING_UP ||
+       state == DISPLAY_STATE_BLE_ADVERTISING ||
+       state == DISPLAY_STATE_WIFI_CONNECTING ||
+       state == DISPLAY_STATE_CHECKING_API) {
+        if(state_arc == NULL) {
             state_arc = lv_arc_create(lv_scr_act());
             lv_obj_remove_style(state_arc, NULL, LV_PART_KNOB);
-            lv_obj_set_style_arc_color(state_arc, lv_color_black(), LV_PART_MAIN);
             lv_arc_set_bg_angles(state_arc, 0, 360);
-            // Imposta dimensioni e allineamento per superare eventuali clip
+            lv_obj_set_style_arc_color(state_arc, lv_color_black(), LV_PART_MAIN);
             lv_obj_set_size(state_arc, LCD_H_RES, LCD_V_RES);
             lv_obj_align(state_arc, LV_ALIGN_CENTER, 0, 0);
-            // Imposta la larghezza della linea
             lv_obj_set_style_line_width(state_arc, ARC_LINE_WIDTH, 0);
-            // Rimuovi interattività
             lv_obj_clear_flag(state_arc, LV_OBJ_FLAG_CLICKABLE);
-            // Imposta i valori iniziali: da 0 a ARC_SPAN
             lv_arc_set_angles(state_arc, 0, ARC_SPAN);
-            // Avvia l'animazione continua: ruota l'arco lungo il bordo
+
             lv_anim_t a_arc;
             lv_anim_init(&a_arc);
             lv_anim_set_var(&a_arc, state_arc);
@@ -388,26 +386,18 @@ void display_manager_update(display_state_t state, int practices_count) {
             lv_anim_set_repeat_count(&a_arc, LV_ANIM_REPEAT_INFINITE);
             lv_anim_start(&a_arc);
         }
-        // Aggiorna il colore in base allo stato, senza riavviare l'animazione
-        if (state == DISPLAY_STATE_WARMING_UP) {
-            lv_obj_set_style_arc_color(state_arc, ARC_COLOR_WARMING, LV_PART_INDICATOR);
-        } else if (state == DISPLAY_STATE_BLE_ADVERTISING) {
-            lv_obj_set_style_arc_color(state_arc, ARC_COLOR_BLE, LV_PART_INDICATOR);
-        } else if (state == DISPLAY_STATE_WIFI_CONNECTING) {
-            lv_obj_set_style_arc_color(state_arc, ARC_COLOR_WIFI, LV_PART_INDICATOR);
-        } else if (state == DISPLAY_STATE_CHECKING_API) {
-            lv_obj_set_style_arc_color(state_arc, ARC_COLOR_API, LV_PART_INDICATOR);
-        }
+        lv_color_t arc_color = (state == DISPLAY_STATE_WARMING_UP) ? ARC_COLOR_WARMING :
+                               (state == DISPLAY_STATE_BLE_ADVERTISING) ? ARC_COLOR_BLE :
+                               (state == DISPLAY_STATE_WIFI_CONNECTING) ? ARC_COLOR_WIFI : ARC_COLOR_API;
+        lv_obj_set_style_arc_color(state_arc, arc_color, LV_PART_INDICATOR);
     }
     else {
-        // Se lo stato non richiede l'arco, rimuovilo se esiste
-        if (state_arc != NULL) {
+        if(state_arc != NULL) {
             lv_anim_del(state_arc, arc_anim_cb);
             lv_obj_del(state_arc);
             state_arc = NULL;
         }
     }
 
-    
     ESP_LOGI(TAG, "[DISPLAY] Stato aggiornato: %d, testo: \"%s\"", state, new_text);
 }
