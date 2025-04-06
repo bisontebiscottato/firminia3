@@ -3,6 +3,7 @@
 #include "esp_netif.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_netif_types.h"
 #include <string.h>
 
 static const char* TAG = "WiFi_Manager";
@@ -32,19 +33,24 @@ void wifi_manager_init(void)
     s_wifi_event_group = xEventGroupCreate();
     esp_netif_init();
     esp_event_loop_create_default();
-    esp_netif_create_default_wifi_sta();
+    // Crea e conserva l'handle della WiFi station
+    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
+    // Imposta l'hostname personalizzato (il nome visualizzato sul network)
+    esp_netif_set_hostname(sta_netif, "Firminia3-Lascaux");
+
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&cfg);
     esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler, NULL, NULL);
     esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, NULL, NULL);
     esp_wifi_set_mode(WIFI_MODE_STA);
-        // Ottimizzazioni Wi-Fi consigliate
-        esp_wifi_set_max_tx_power(84);  // Massima potenza
-        esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
+    // Ottimizzazioni Wi-Fi consigliate
+    esp_wifi_set_max_tx_power(84);  // Massima potenza
+    esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
         
     esp_wifi_start();
     ESP_LOGI(TAG, "Wi-Fi initialization completed.");
 }
+
 
 bool wifi_manager_connect(const char* ssid, const char* password)
 {

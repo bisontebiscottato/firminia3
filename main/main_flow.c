@@ -15,11 +15,11 @@
 static const char* TAG = "MainFlow";
 
 #define BUTTON_GPIO           5
-#define WARMUP_DURATION_MS    2000    // Durata della fase di warmup
-#define POLL_INTERVAL_MS      50      // Intervallo di polling del tasto durante il warmup
+#define WARMUP_DURATION_MS    3000    // Durata della fase di warmup
+#define POLL_INTERVAL_MS      200      // Intervallo di polling del tasto durante il warmup
 #define BLE_WAIT_DURATION_MS  30000   // Tempo massimo di attesa per la configurazione BLE
-#define API_CHECK_INTERVAL_MS 10000   // Tempo di attesa tra un controllo API e l'altro
-#define BUTTON_POLL_INTERVAL_MS 100  // Intervallo per il polling del tasto nel ciclo di attesa
+#define API_CHECK_INTERVAL_MS 60000   // Tempo di attesa tra un controllo API e l'altro
+#define BUTTON_POLL_INTERVAL_MS 200  // Intervallo per il polling del tasto nel ciclo di attesa
 
 typedef enum {
     STATE_WARMING_UP,
@@ -75,6 +75,8 @@ static bool immediate_check_triggered(int *last_state)
 
 static void main_flow_task(void* pvParameters)
 {
+
+    
     ESP_LOGI(TAG, "Starting main flow task...");
 
     // Fase di WARMING UP

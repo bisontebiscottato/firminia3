@@ -44,7 +44,7 @@ static const char *TAG = "display";
 #define LCD_PARAM_BITS         8
 
 // LVGL buffer configuration
-#define LVGL_DRAW_BUF_LINES    40  // Puoi ridurlo se serve meno memoria
+#define LVGL_DRAW_BUF_LINES    30  // Puoi ridurlo se serve meno memoria
 #define LVGL_TICK_PERIOD_MS    2
 #define LVGL_TASK_MAX_DELAY_MS 500
 #define LVGL_TASK_MIN_DELAY_MS 1
