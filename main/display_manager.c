@@ -406,7 +406,7 @@
              strcpy(new_text, LV_SYMBOL_WIFI "\nConnecting\nto Wi-Fi...");
              break;
          case DISPLAY_STATE_CHECKING_API:
-             strcpy(new_text, LV_SYMBOL_REFRESH "\nChecking\nAPI...");
+             strcpy(new_text, LV_SYMBOL_REFRESH "\nLooking\nfor pending\nsignatures...");
              break;
          case DISPLAY_STATE_SHOW_PRACTICES:
              if (practices_count == 1) {
