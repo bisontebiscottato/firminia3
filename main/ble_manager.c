@@ -16,12 +16,12 @@
  
  // Project module inclusions
  #include "ble_manager.h"
- #include "device_config.h"      // Configurazione NVS e variabili globali (wifi_ssid, web_server, ecc.)
- #include "display_manager.h"    // Per aggiornare lo stato della UI
+ #include "device_config.h"
+ #include "display_manager.h"    
  
  static const char *TAG = "BLE_Manager";
  
- // --- Buffer per accumulare il JSON ricevuto ---
+ // --- Buffer for JSON ---
  #define MAX_JSON_SIZE 1024
  static char json_buffer[MAX_JSON_SIZE];
  static uint16_t json_buffer_index = 0;
@@ -33,24 +33,25 @@
  static esp_bd_addr_t current_conn_addr;
  static bool ble_is_connected = false;
  
- /* --- DEFINIZIONI PER LA CREAZIONE DEL SERVIZIO GATT --- */
- // UUID per la dichiarazione del Primary Service (16-bit standard: 0x2800)
- static uint16_t primary_service_uuid = 0x2800;
- // UUID per la dichiarazione della caratteristica (16-bit standard: 0x2803)
- static uint16_t char_decl_uuid = 0x2803;
- // UUID per la dichiarazione del CCCD (16-bit standard: 0x2902)
- static uint16_t primary_cccd_uuid = 0x2902;
- 
- // UUID del servizio (formato 128-bit). In questo esempio il servizio ha un UUID personalizzato.
- static uint8_t service_uuid128[16] = {
-     0xFB, 0x34, 0x9B, 0x5F, 0x80, 0x00, 0x00, 0x80,
-     0x00, 0x10, 0x00, 0x00, 0xF0, 0xFF, 0x00, 0x00
- };
- // UUID della caratteristica di configurazione (formato 128-bit)
- static uint8_t config_char_uuid[16] = {
-     0xFB, 0x34, 0x9B, 0x5F, 0x80, 0x00, 0x00, 0x80,
-     0x00, 0x10, 0x00, 0x00, 0x01, 0xFF, 0x00, 0x00
- };
+/* --- DEFINITIONS FOR GATT SERVICE CREATION --- */
+// UUID for Primary Service declaration (standard 16-bit: 0x2800)
+static uint16_t primary_service_uuid = 0x2800;
+// UUID for Characteristic declaration (standard 16-bit: 0x2803)
+static uint16_t char_decl_uuid = 0x2803;
+// UUID for CCCD declaration (standard 16-bit: 0x2902)
+static uint16_t primary_cccd_uuid = 0x2902;
+
+// UUID of the service (128-bit format). In this example, the service has a custom UUID.
+static uint8_t service_uuid128[16] = {
+    0xFB, 0x34, 0x9B, 0x5F, 0x80, 0x00, 0x00, 0x80,
+    0x00, 0x10, 0x00, 0x00, 0xF0, 0xFF, 0x00, 0x00
+};
+// UUID of the configuration characteristic (128-bit format)
+static uint8_t config_char_uuid[16] = {
+    0xFB, 0x34, 0x9B, 0x5F, 0x80, 0x00, 0x00, 0x80,
+    0x00, 0x10, 0x00, 0x00, 0x01, 0xFF, 0x00, 0x00
+};
+
  
  // Definition of GATT attribute table (4 attributes)
  // 0: Service Declaration, 1: Characteristic Declaration,
