@@ -1,3 +1,9 @@
+/*************************************************************
+ *                     FIRMINIA 3.0                          *
+ *  File: wifi_manager.c                                     *
+ *  Author: Andrea Mancini     E-mail: biso@biso.it          *
+ ************************************************************/
+
 #include "wifi_manager.h"
 #include "esp_wifi.h"
 #include "esp_netif.h"
@@ -30,7 +36,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 void wifi_manager_init(void)
 {
     ESP_LOGI(TAG, "Initializing Wi-Fi...");
-    s_wifi_event_group = xEventGroupCreate();
+    s_wifi_event_group = xEventGroupCreate(); 
     esp_netif_init();
     esp_event_loop_create_default();
     // Crea e conserva l'handle della WiFi station

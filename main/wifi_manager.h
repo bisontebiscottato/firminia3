@@ -1,3 +1,9 @@
+/*************************************************************
+ *                     FIRMINIA 3.0                          *
+ *  File: wifi_manager.h                                     *
+ *  Author: Andrea Mancini     E-mail: biso@biso.it          *
+ ************************************************************/
+
 #ifndef WIFI_MANAGER_H
 #define WIFI_MANAGER_H
 

@@ -1,3 +1,9 @@
+/*************************************************************
+ *                     FIRMINIA 3.0                          *
+ *  File: display_manager.c                                  *
+ *  Author: Andrea Mancini     E-mail: biso@biso.it          *
+ ************************************************************/
+
 #include "display_manager.h"
 #include <stdio.h>
 #include <unistd.h>

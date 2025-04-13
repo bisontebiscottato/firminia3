@@ -1,3 +1,9 @@
+/*************************************************************
+ *                     FIRMINIA 3.0                          *
+ *  File: ble_manager.c                                      *
+ *  Author: Andrea Mancini     E-mail: biso@biso.it          *
+ ************************************************************/
+
 #include <string.h>
 #include <ctype.h>
 #include "esp_bt.h"

@@ -1,3 +1,9 @@
+/*************************************************************
+ *                     FIRMINIA 3.0                          *
+ *  File: ble_manager.h                                      *
+ *  Author: Andrea Mancini     E-mail: biso@biso.it          *
+ ************************************************************/
+
 #ifndef BLE_MANAGER_H
 #define BLE_MANAGER_H
 

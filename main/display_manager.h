@@ -1,3 +1,9 @@
+/*************************************************************
+ *                     FIRMINIA 3.0                          *
+ *  File: display_manager.h                                  *
+ *  Author: Andrea Mancini     E-mail: biso@biso.it          *
+ ************************************************************/
+
 #ifndef DISPLAY_MANAGER_H
 #define DISPLAY_MANAGER_H
 
