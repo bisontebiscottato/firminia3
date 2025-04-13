@@ -150,11 +150,8 @@
  }
  
  /**
-  * @brief Processa i dati JSON ricevuti via BLE.
+  * @brief JSON values processing function.
   *
-  * Il JSON può contenere i campi "ssid", "password", "server", "port", "url", "token" e "user".
-  * Se un campo è presente, viene usato per aggiornare la configurazione globale.
-  * Successivamente, la configurazione aggiornata viene salvata in NVS e viene notificato l’aggiornamento alla UI.
   */
  static void ble_process_received_data(uint8_t *data, uint16_t length)
  {
@@ -172,7 +169,7 @@
          return;
      }
  
-     // Estrai i campi attesi
+     // Extract JSON fields
      cJSON *ssid_item = cJSON_GetObjectItemCaseSensitive(json, "ssid");
      cJSON *password_item = cJSON_GetObjectItemCaseSensitive(json, "password");
      cJSON *server_item = cJSON_GetObjectItemCaseSensitive(json, "server");
@@ -218,7 +215,7 @@
          return;
      }
  
-     // Se tutti i controlli sono superati, aggiorna le variabili globali
+     // Update global configuration variables, if present in JSON
      strcpy(wifi_ssid, ssid_item->valuestring);
      strcpy(wifi_password, password_item->valuestring);
      strcpy(web_server, server_item->valuestring);
@@ -227,14 +224,14 @@
      strcpy(api_token, token_item->valuestring);
      strcpy(askmesign_user, user_item->valuestring);
  
-     // Salva la configurazione in NVS
+     // Save the updated configuration to NVS
      save_config_to_nvs();
      ESP_LOGI(TAG, "✅ Configurazione aggiornata e salvata in NVS!");
  
-     // Aggiorna la UI per notificare l'aggiornamento della configurazione
+     // Update UI state
      display_manager_update(DISPLAY_STATE_CONFIG_UPDATED, 0);
  
-     // Se è stata definita una callback aggiuntiva, chiamala con i dati ricevuti
+     // If a additional callback is set, call it with the JSON data
      if (s_config_callback) {
          s_config_callback((char *)data);
      }
@@ -244,10 +241,8 @@
  
  
  /**
-  * @brief Gestisce l'evento di scrittura GATT.
+  * @brief GAP response manager for BLE events.
   *
-  * I dati ricevuti vengono accumulati in un buffer; quando viene rilevata la presenza
-  * del carattere '}' si assume che il JSON sia completo e si processa.
   */
  static void gatts_write_event_handler(esp_gatts_cb_event_t event, 
                                        esp_gatt_if_t gatts_if,
@@ -265,7 +260,7 @@
          
          ESP_LOGI(TAG, "📥 Buffer JSON attuale: %s", json_buffer);
          
-         // Se il buffer contiene il carattere di chiusura JSON, processa i dati
+         // If the buffer contains a closing brace, process the JSON
          if (strchr(json_buffer, '}')) {
              ESP_LOGI(TAG, "✅ JSON completo ricevuto, elaborazione...");
              ble_process_received_data((uint8_t *)json_buffer, json_buffer_index);
@@ -275,9 +270,7 @@
  }
  
  /**
-  * @brief Gestore degli eventi GATTS.
-  *
-  * Si occupa della registrazione, creazione della tabella degli attributi, gestione delle scritture e degli eventi di connessione/disconnessione.
+  * @brief GAP manager for BLE events.
   */
  static void gatts_event_handler(esp_gatts_cb_event_t event, 
                                  esp_gatt_if_t gatts_if, 
@@ -318,7 +311,7 @@
  }
  
  /**
-  * @brief Gestore degli eventi GAP per l’advertising.
+  * @brief GAP manager for BLE advertising events.
   */
  static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
  {
@@ -340,7 +333,7 @@
  }
  
  /**
-  * @brief Inizializza lo stack BLE, configura i dati di advertising e crea il servizio GATT.
+  * @brief Init the Bluetooth stack (Bluedroid). 
   */
  void ble_manager_init(void)
  {
@@ -362,19 +355,20 @@
          ESP_LOGE(TAG, "Abilitazione Bluedroid fallita");
          return;
      }
-     // Registra le callback GAP e GATTS
+     // Record the Bluetooth device address
      esp_ble_gap_register_callback(gap_event_handler);
      esp_ble_gatts_register_callback(gatts_event_handler);
-     // Registra l'applicazione BLE (ad es. app_id 0)
+
+     // Record the application ID
      esp_ble_gatts_app_register(0);
  
-     // Imposta il nome del dispositivo PRIMA di configurare i dati di advertising
+     // Set the name of the device, before send the data
      esp_ble_gap_set_device_name("ESP32-FIRMINIA");
  
-     // Configura i dati di advertising: includi il nome e il TX power
+     // Configure the advertising data
      esp_ble_adv_data_t adv_data = {
          .set_scan_rsp = false,
-         .include_name = true,  // Includi il nome impostato
+         .include_name = true,  // Include the device name in the advertising data
          .include_txpower = true,
          .appearance = 0x00,
          .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT)
@@ -385,7 +379,7 @@
  }
  
  /**
-  * @brief Avvia l’advertising BLE.
+  * @brief Start BLE Advertising.
   */
  void ble_manager_start_advertising(void)
  {
@@ -404,7 +398,7 @@
  }
  
  /**
-  * @brief Ferma l’advertising BLE.
+  * @brief Stop BLE Advertising.
   */
  void ble_manager_stop_advertising(void)
  {
@@ -415,7 +409,7 @@
  }
  
  /**
-  * @brief Disconnette attivamente il dispositivo BLE connesso, se presente.
+  * @brief Active disconnect from the current BLE device.
   */
  void ble_manager_disconnect(void)
  {
@@ -426,7 +420,7 @@
  }
  
  /**
-  * @brief Imposta una callback opzionale da notificare quando viene ricevuta una nuova configurazione via BLE.
+  * @brief Set a callback function to be called when the configuration is updated via BLE.
   */
  void ble_manager_set_config_callback(ble_config_callback_t callback)
  {
