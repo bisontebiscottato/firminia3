@@ -22,7 +22,7 @@
  static const char *TAG = "BLE_Manager";
  
  // --- Buffer for JSON ---
- #define MAX_JSON_SIZE 1024
+ #define MAX_JSON_SIZE 2048
  static char json_buffer[MAX_JSON_SIZE];
  static uint16_t json_buffer_index = 0;
  
