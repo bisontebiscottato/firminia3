@@ -394,7 +394,7 @@
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...\n v3.1");
+             strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...\n\nv3.1");
              break;
          case DISPLAY_STATE_BLE_ADVERTISING:
              strcpy(new_text, LV_SYMBOL_BLUETOOTH "\nBLE Active\nwaiting for\nconfig...");
