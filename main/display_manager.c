@@ -409,12 +409,12 @@
              strcpy(new_text, LV_SYMBOL_WIFI "\nConnecting\nto Wi-Fi...");
              break;
         case DISPLAY_STATE_CHECKING_API: {
-            char short_user[19];
-            strncpy(short_user, askmesign_user, 18);
-            short_user[18] = '\0';
+            char short_user[16];
+            strncpy(short_user, askmesign_user, 15);
+            short_user[15] = '\0';
 
             snprintf(new_text, sizeof(new_text),
-                    LV_SYMBOL_REFRESH "\nChecking\nsignatures for\n%s",
+                    LV_SYMBOL_REFRESH "\nChecking\nsignatures for\n%s...",
                     short_user);
             break;
         }
