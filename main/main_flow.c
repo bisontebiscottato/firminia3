@@ -26,7 +26,9 @@
  #define BLE_WAIT_DURATION_MS  30000   // Maximum waiting time for BLE configuration
  #define API_CHECK_INTERVAL_MS 60000   // Waiting time between one API check and the next
  #define BUTTON_POLL_INTERVAL_MS 200   // Polling interval of the button in the waiting loop
- 
+
+ bool force_immediate_check = false;   // se true, salta il periodo di attesa
+
  typedef enum {
      STATE_WARMING_UP,
      STATE_BLE_ADVERTISING,
@@ -129,49 +131,58 @@
           s_current_state = STATE_WIFI_CONNECTING;
           display_manager_update(DISPLAY_STATE_WIFI_CONNECTING, 0);
           bool wifi_ok = wifi_manager_connect(wifi_ssid, wifi_password);
-          if (!wifi_ok) {
-               s_current_state = STATE_NO_WIFI;
-               display_manager_update(DISPLAY_STATE_NO_WIFI_SLEEPING, 0);
-               ESP_LOGW(TAG, "Wi-Fi connection failed. Retrying in loop...");
+            if (wifi_ok) {
+                force_immediate_check = true;   // primo check immediato
+            } else {
+                s_current_state = STATE_NO_WIFI;
+                display_manager_update(DISPLAY_STATE_NO_WIFI_SLEEPING, 0);
+                ESP_LOGW(TAG, "Wi-Fi connection failed. Retrying in loop...");
           }
      }
  
      // Initialize the variable for rising edge detection
      int last_button_state = gpio_get_level(BUTTON_GPIO);
  
-     while (1) {
-          // Check the Wi-Fi connection
-          if (!wifi_manager_is_connected()) {
-               ESP_LOGW(TAG, "Wi-Fi connection lost. Attempting reconnection...");
-               display_manager_update(DISPLAY_STATE_WIFI_CONNECTING, 0);
-               if (!wifi_manager_connect(wifi_ssid, wifi_password)) {
-                   ESP_LOGW(TAG, "Reconnection attempt failed.");
-                   display_manager_update(DISPLAY_STATE_NO_WIFI_SLEEPING, 0);
-                   vTaskDelay(pdMS_TO_TICKS(5000));
-                   continue;
-               } else {
-                   ESP_LOGI(TAG, "Wi-Fi reconnected successfully.");
-               }
-          }
- 
-          // Wait for API_CHECK_INTERVAL_MS, but periodically check the button
-          uint32_t elapsed = 0;
-          while (elapsed < API_CHECK_INTERVAL_MS) {
-              // If we are in STATE_SHOW_PRACTICES or STATE_NO_PRACTICES and the rising edge is detected...
-              if ((s_current_state == STATE_SHOW_PRACTICES || s_current_state == STATE_NO_PRACTICES) &&
-                  immediate_check_triggered(&last_button_state))
-              {
-                  ESP_LOGI(TAG, "Rising edge detected: triggering immediate API check.");
-                  break;  // Exit the loop to immediately perform the API check
-              }
-              vTaskDelay(pdMS_TO_TICKS(BUTTON_POLL_INTERVAL_MS));
-              elapsed += BUTTON_POLL_INTERVAL_MS;
-          }
- 
-          // Perform a single API check per cycle
-          s_current_state = STATE_CHECKING_API;
-          display_manager_update(DISPLAY_STATE_CHECKING_API, 0);
-          int practices = api_manager_check_practices();
+    while (1) {
+
+        /* -- 1. Gestione Wi-Fi ---------------------------------------------- */
+        if (!wifi_manager_is_connected()) {
+            ESP_LOGW(TAG, "Wi-Fi connection lost. Attempting reconnection…");
+            display_manager_update(DISPLAY_STATE_WIFI_CONNECTING, 0);
+
+            if (!wifi_manager_connect(wifi_ssid, wifi_password)) {
+                ESP_LOGW(TAG, "Reconnection attempt failed.");
+                display_manager_update(DISPLAY_STATE_NO_WIFI_SLEEPING, 0);
+                vTaskDelay(pdMS_TO_TICKS(5000));
+                continue;                      // riprova dall’inizio del while
+            } else {
+                ESP_LOGI(TAG, "Wi-Fi reconnected successfully.");
+                force_immediate_check = true;  // ← qui!
+            }
+        }
+
+        /* -- 2. Attesa o check immediato ------------------------------------ */
+        if (!force_immediate_check) {          // attesa “tradizionale”
+            uint32_t elapsed = 0;
+            while (elapsed < API_CHECK_INTERVAL_MS) {
+                if ((s_current_state == STATE_SHOW_PRACTICES ||
+                    s_current_state == STATE_NO_PRACTICES) &&
+                    immediate_check_triggered(&last_button_state)) {
+                    ESP_LOGI(TAG, "Button rising edge: immediate API check.");
+                    break;
+                }
+                vTaskDelay(pdMS_TO_TICKS(BUTTON_POLL_INTERVAL_MS));
+                elapsed += BUTTON_POLL_INTERVAL_MS;
+            }
+        }
+        /* Se force_immediate_check era true, saltiamo completamente il loop */
+
+        force_immediate_check = false;         // consumato il “bonus” immediato
+
+        /* -- 3. Controllo delle pratiche ------------------------------------ */
+        s_current_state = STATE_CHECKING_API;
+        display_manager_update(DISPLAY_STATE_CHECKING_API, 0);
+        int practices = api_manager_check_practices();
           ESP_LOGI(TAG, "practices = %d", practices);
  
           if (practices < 0) {

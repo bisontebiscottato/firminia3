@@ -63,7 +63,8 @@
  extern const lv_font_t lv_font_montserrat_48;
  
  static lv_obj_t *number_label = NULL;
- 
+ static const lv_font_t *pending_font = &lv_font_montserrat_28;  // font di default
+
  // Mutex to protect LVGL calls
  static _lock_t lvgl_api_lock;
  
@@ -135,16 +136,21 @@
  // Callback at the end of fade-out
  // Here we update the text, then start fade-in
  //------------------------------------------------------------------------------
- static void fade_out_anim_ready_cb(lv_anim_t *a)
- {
-     if(!a || !a->var) return;
-     lv_obj_t *lbl = (lv_obj_t*)a->var;
- 
-     ESP_LOGI(TAG, "fade_out_anim_ready_cb: applying new text and fade-in");
-     lv_label_set_text(lbl, new_text);
-     lv_obj_align(lbl, LV_ALIGN_CENTER, 0, 0);
-     fade_in_anim_start(lbl);
- }
+static void fade_out_anim_ready_cb(lv_anim_t *a)
+{
+    if(!a || !a->var) return;
+    lv_obj_t *lbl = (lv_obj_t*)a->var;
+
+    /* 1. testo nuovo */
+    lv_label_set_text(lbl, new_text);
+
+    /* 2. font nuovo */
+    lv_obj_set_style_text_font(lbl, pending_font, 0);
+
+    /* 3. riallinea e fade-in */
+    lv_obj_align(lbl, LV_ALIGN_CENTER, 0, 0);
+    fade_in_anim_start(lbl);
+}
  
  //------------------------------------------------------------------------------
  // Starts the fade-out animation (255->0) with callback
@@ -400,7 +406,7 @@
              strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...\n\nv3.1.1");
              break;
          case DISPLAY_STATE_BLE_ADVERTISING:
-             strcpy(new_text, LV_SYMBOL_BLUETOOTH "\nBT activated.\nwaiting for\nconfig...");
+             strcpy(new_text, LV_SYMBOL_BLUETOOTH "\nBT activated.\nWaiting for\nconfig...");
              break;
          case DISPLAY_STATE_CONFIG_UPDATED:
              strcpy(new_text, LV_SYMBOL_OK "\nConfiguration\nupdated!");
@@ -412,6 +418,8 @@
             char short_user[16];
             strncpy(short_user, askmesign_user, 15);
             short_user[15] = '\0';
+            
+            pending_font = &lv_font_montserrat_18;
 
             snprintf(new_text, sizeof(new_text),
                     LV_SYMBOL_REFRESH "\nChecking\nsignatures for\n%s...",
@@ -464,20 +472,10 @@
          // Fade-in at first startup
          fade_in_anim_start(state_label);
      }
-     else {
-        // Font dinamico per DISPLAY_STATE_CHECKING_API
-        if (state == DISPLAY_STATE_CHECKING_API) {
-            lv_obj_set_style_text_font(state_label, &lv_font_montserrat_18, 0);
-        } else {
-            lv_obj_set_style_text_font(state_label, &lv_font_montserrat_28, 0);
-        }
+    else {
 
-        // Mostra il testo aggiornato
-        lv_label_set_text(state_label, new_text);
-
-        // Start a fade-out to change text
-        fade_out_anim_start(state_label);
-     }
+        fade_out_anim_start(state_label);   // avvia fade-out, il callback cambierà il testo
+    }
 
      // If we are in SHOW_PRACTICES, show number_label
      if (state == DISPLAY_STATE_SHOW_PRACTICES) {
