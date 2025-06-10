@@ -23,7 +23,8 @@
  #include "lvgl.h"
  #include "esp_heap_caps.h"
  #include "esp_lcd_gc9a01.h"
- 
+ #include "device_config.h"
+
  static const char *TAG = "display";
  
  // Using SPI2 in the example
@@ -32,7 +33,7 @@
  #define LCD_BK_LIGHT_ON_LEVEL  1
  #define LCD_BK_LIGHT_OFF_LEVEL !LCD_BK_LIGHT_ON_LEVEL
  #define PIN_NUM_SCLK           7
- #define PIN_NUM_MOSI           9
+ #define PIN_NUM_MOSI           9 // sda
  #define PIN_NUM_MISO           -1
  #define PIN_NUM_LCD_DC         4
  #define PIN_NUM_LCD_RST        3
@@ -56,6 +57,8 @@
  #define LVGL_TASK_STACK_SIZE   (8 * 1024)
  #define LVGL_TASK_PRIORITY     2
  
+ // Font definitions
+ extern const lv_font_t lv_font_montserrat_18;
  extern const lv_font_t lv_font_montserrat_28;
  extern const lv_font_t lv_font_montserrat_48;
  
@@ -394,10 +397,10 @@
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...\n\nv3.1");
+             strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...\n\nv3.1.1");
              break;
          case DISPLAY_STATE_BLE_ADVERTISING:
-             strcpy(new_text, LV_SYMBOL_BLUETOOTH "\nBLE Active\nwaiting for\nconfig...");
+             strcpy(new_text, LV_SYMBOL_BLUETOOTH "\nBT activated.\nwaiting for\nconfig...");
              break;
          case DISPLAY_STATE_CONFIG_UPDATED:
              strcpy(new_text, LV_SYMBOL_OK "\nConfiguration\nupdated!");
@@ -405,9 +408,17 @@
          case DISPLAY_STATE_WIFI_CONNECTING:
              strcpy(new_text, LV_SYMBOL_WIFI "\nConnecting\nto Wi-Fi...");
              break;
-         case DISPLAY_STATE_CHECKING_API:
-             strcpy(new_text, LV_SYMBOL_REFRESH "\nLooking\nfor pending\nsignatures...");
-             break;
+        case DISPLAY_STATE_CHECKING_API: {
+            char short_user[19];
+            strncpy(short_user, askmesign_user, 18);
+            short_user[18] = '\0';
+
+            snprintf(new_text, sizeof(new_text),
+                    LV_SYMBOL_REFRESH "\nChecking\nsignatures for\n%s",
+                    short_user);
+            break;
+        }
+
          case DISPLAY_STATE_SHOW_PRACTICES:
              if (practices_count == 1) {
                  strcpy(new_text, "\r\ndossier\nto sign!");
@@ -419,13 +430,13 @@
              strcpy(new_text, LV_SYMBOL_OK "\nNo dossiers\nto sign.\nRelax.");
              break;
          case DISPLAY_STATE_NO_WIFI_SLEEPING:
-             strcpy(new_text, LV_SYMBOL_CLOSE "\nNo Wi-Fi\nsleeping...");
+             strcpy(new_text, LV_SYMBOL_CLOSE "\nNo Wi-Fi.\nsleeping...");
              break;
          case DISPLAY_STATE_API_ERROR:
-             strcpy(new_text, LV_SYMBOL_WARNING "\nAPI error!");
+             strcpy(new_text, LV_SYMBOL_WARNING "\nAPI error!\nE-002");
              break;
          default:
-             strcpy(new_text, LV_SYMBOL_BACKSPACE "\nUnknown state.");
+             strcpy(new_text, LV_SYMBOL_BACKSPACE "\nUnknown state.\nE-003");
              break;
      }
  
@@ -438,7 +449,7 @@
          lv_obj_set_style_text_color(state_label, lv_color_white(), 0);
          lv_obj_set_style_text_align(state_label, LV_TEXT_ALIGN_CENTER, 0);
          lv_obj_align(state_label, LV_ALIGN_CENTER, 0, 20);
- 
+
          // number_label in a larger font
          number_label = lv_label_create(lv_scr_act());
          lv_obj_set_style_text_font(number_label, &lv_font_montserrat_48, 0);
@@ -454,19 +465,32 @@
          fade_in_anim_start(state_label);
      }
      else {
-         // Start a fade-out to change text
-         fade_out_anim_start(state_label);
+        // Font dinamico per DISPLAY_STATE_CHECKING_API
+        if (state == DISPLAY_STATE_CHECKING_API) {
+            lv_obj_set_style_text_font(state_label, &lv_font_montserrat_18, 0);
+        } else {
+            lv_obj_set_style_text_font(state_label, &lv_font_montserrat_28, 0);
+        }
+
+        // Mostra il testo aggiornato
+        lv_label_set_text(state_label, new_text);
+
+        // Start a fade-out to change text
+        fade_out_anim_start(state_label);
      }
- 
+
      // If we are in SHOW_PRACTICES, show number_label
      if (state == DISPLAY_STATE_SHOW_PRACTICES) {
          lv_label_set_text_fmt(number_label, "%d", practices_count);
          lv_obj_clear_flag(number_label, LV_OBJ_FLAG_HIDDEN);
+
      } else {
          // Hide number_label in other states
          lv_obj_add_flag(number_label, LV_OBJ_FLAG_HIDDEN);
      }
- 
+
+
+
      // Animated arc management (states where needed)
      bool arc_needed = (state == DISPLAY_STATE_WARMING_UP ||
                         state == DISPLAY_STATE_BLE_ADVERTISING ||

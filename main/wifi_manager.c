@@ -68,7 +68,7 @@
      xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
      esp_wifi_connect();
      ESP_LOGI(TAG, "Waiting for Wi-Fi connection...");
-     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, pdMS_TO_TICKS(10000));
+     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, pdMS_TO_TICKS(5000));
      if (bits & WIFI_CONNECTED_BIT) {
          ESP_LOGI(TAG, "Wi-Fi connected successfully!");
          return true;
