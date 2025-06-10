@@ -70,6 +70,7 @@
  
  // Global pointer to the LVGL label for displaying state text
  static lv_obj_t *state_label = NULL;
+
  // Global buffer for the new text to display
  static char new_text[256] = {0};
  
@@ -473,7 +474,11 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
          fade_in_anim_start(state_label);
      }
     else {
-
+        if (state == DISPLAY_STATE_CHECKING_API)
+            pending_font = &lv_font_montserrat_18;
+        else
+            pending_font = &lv_font_montserrat_28;
+    
         fade_out_anim_start(state_label);   // avvia fade-out, il callback cambierà il testo
     }
 
@@ -486,8 +491,6 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
          // Hide number_label in other states
          lv_obj_add_flag(number_label, LV_OBJ_FLAG_HIDDEN);
      }
-
-
 
      // Animated arc management (states where needed)
      bool arc_needed = (state == DISPLAY_STATE_WARMING_UP ||
@@ -545,7 +548,8 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
  
      ESP_LOGI(TAG, "[DISPLAY] Stato aggiornato: %d, testo: \"%s\"",
               state, new_text);
- 
+
+
      // Release the lock
      _lock_release(&lvgl_api_lock);
  }
