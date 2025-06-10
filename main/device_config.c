@@ -24,6 +24,7 @@ char web_port[WEB_PORT_SIZE];
 char web_url[WEB_URL_SIZE];
 char api_token[API_TOKEN_SIZE];
 char askmesign_user[ASKMESIGN_USER_SIZE];
+char api_interval_ms[API_INTERVAL_MS_SIZE];
 
 void load_config_from_nvs(void) {
     nvs_handle_t handle;
@@ -39,6 +40,7 @@ void load_config_from_nvs(void) {
         strcpy(web_url, DEFAULT_WEB_URL);
         strcpy(api_token, DEFAULT_API_TOKEN);
         strcpy(askmesign_user, DEFAULT_ASKMESIGN_USER);
+        strcpy(api_interval_ms, DEFAULT_API_INTERVAL_MS);
         
         // Save default configuration to NVS for future use
         save_config_to_nvs();
@@ -91,6 +93,12 @@ void load_config_from_nvs(void) {
     if (nvs_get_str(handle, NVS_ASKMESIGN_USER, askmesign_user, &len) != ESP_OK || strlen(askmesign_user) == 0) {
         strcpy(askmesign_user, DEFAULT_ASKMESIGN_USER);
     }
+
+    // Load API Interval
+    len = sizeof(api_interval_ms);
+    if (nvs_get_str(handle, NVS_API_INTERVAL_MS, api_interval_ms, &len) != ESP_OK || strlen(api_interval_ms) == 0) {
+        strcpy(api_interval_ms, DEFAULT_API_INTERVAL_MS);
+    }
     
     nvs_close(handle);
     
@@ -102,6 +110,8 @@ void load_config_from_nvs(void) {
     ESP_LOGI(TAG, "Web URL: %s", web_url);
     ESP_LOGI(TAG, "API Token: %s", (strlen(api_token) > 0) ? "******" : "Empty!");
     ESP_LOGI(TAG, "AskMeSign User: %s", askmesign_user);
+    ESP_LOGI(TAG, "API Interval check: %s", api_interval_ms);
+
 }
 
 void save_config_to_nvs(void) {
@@ -119,7 +129,8 @@ void save_config_to_nvs(void) {
     nvs_set_str(handle, NVS_WEB_URL, web_url);
     nvs_set_str(handle, NVS_API_TOKEN, api_token);
     nvs_set_str(handle, NVS_ASKMESIGN_USER, askmesign_user);
-    
+    nvs_set_str(handle, NVS_API_INTERVAL_MS, api_interval_ms);
+
     nvs_commit(handle);
     nvs_close(handle);
     

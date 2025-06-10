@@ -150,6 +150,19 @@ static uint8_t config_char_uuid[16] = {
      return user != NULL;
  }
  
+// Interval: must consist solely of digits, and the numeric value must be between 10000 and 9000000
+ static bool validate_interval(const char *interval_str) {
+     if (!interval_str || strlen(interval_str) == 0)
+         return false;
+     for (size_t i = 0; i < strlen(interval_str); i++) {
+         if (!isdigit((unsigned char)interval_str[i])) {
+             return false;
+         }
+     }
+     int interval = atoi(interval_str);
+     return (interval >= 10000 && interval <= 9000000);
+ }
+
  /**
   * @brief JSON values processing function.
   *
@@ -178,6 +191,7 @@ static uint8_t config_char_uuid[16] = {
      cJSON *url_item = cJSON_GetObjectItemCaseSensitive(json, "url");
      cJSON *token_item = cJSON_GetObjectItemCaseSensitive(json, "token");
      cJSON *user_item = cJSON_GetObjectItemCaseSensitive(json, "user");
+     cJSON *interval_item = cJSON_GetObjectItemCaseSensitive(json, "interval");
  
      bool valid = true;
  
@@ -209,7 +223,10 @@ static uint8_t config_char_uuid[16] = {
          ESP_LOGE(TAG, "❌ Campo 'user' mancante");
          valid = false;
      }
- 
+    if (!cJSON_IsString(interval_item) || !validate_interval(interval_item->valuestring)) {
+         ESP_LOGE(TAG, "❌ Campo 'interval' mancante");
+         valid = false;
+     }
      if (!valid) {
          ESP_LOGE(TAG, "❌ JSON non valido. Ignoro la configurazione.");
          cJSON_Delete(json);
@@ -224,7 +241,8 @@ static uint8_t config_char_uuid[16] = {
      strcpy(web_url, url_item->valuestring);
      strcpy(api_token, token_item->valuestring);
      strcpy(askmesign_user, user_item->valuestring);
- 
+     strcpy(api_interval_ms, interval_item->valuestring);
+
      // Save the updated configuration to NVS
      save_config_to_nvs();
      ESP_LOGI(TAG, "✅ Configurazione aggiornata e salvata in NVS!");

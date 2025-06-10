@@ -20,12 +20,12 @@
  
  static const char* TAG = "MainFlow";
  
- #define BUTTON_GPIO           5
- #define WARMUP_DURATION_MS    3000    // Duration of the warmup phase
- #define POLL_INTERVAL_MS      200     // Polling interval of the button during warmup
- #define BLE_WAIT_DURATION_MS  30000   // Maximum waiting time for BLE configuration
- #define API_CHECK_INTERVAL_MS 60000   // Waiting time between one API check and the next
- #define BUTTON_POLL_INTERVAL_MS 200   // Polling interval of the button in the waiting loop
+ #define BUTTON_GPIO                    5
+ #define WARMUP_DURATION_MS             3000    // Duration of the warmup phase
+ #define POLL_INTERVAL_MS               200     // Polling interval of the button during warmup
+ #define BLE_WAIT_DURATION_MS           30000   // Maximum waiting time for BLE configuration
+ #define DEFAULT_API_CHECK_INTERVAL_MS  60000UL // Waiting time between one API check and the next
+ #define BUTTON_POLL_INTERVAL_MS        200     // Polling interval of the button in the waiting loop
 
  bool force_immediate_check = false;   // se true, salta il periodo di attesa
 
@@ -164,7 +164,13 @@
         /* -- 2. Attesa o check immediato ------------------------------------ */
         if (!force_immediate_check) {          // attesa “tradizionale”
             uint32_t elapsed = 0;
-            while (elapsed < API_CHECK_INTERVAL_MS) {
+            char *endptr;
+            uint32_t interval = strtoul(api_interval_ms, &endptr, 10);
+
+            if (endptr == api_interval_ms || *endptr != '\0') {
+                interval = DEFAULT_API_CHECK_INTERVAL_MS; // se conversione fallita, uso il default
+            }
+            while (elapsed < interval) {
                 if ((s_current_state == STATE_SHOW_PRACTICES ||
                     s_current_state == STATE_NO_PRACTICES) &&
                     immediate_check_triggered(&last_button_state)) {

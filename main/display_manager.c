@@ -404,7 +404,7 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...\n\nv3.1.1");
+             strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...\n\nv3.2.2");
              break;
          case DISPLAY_STATE_BLE_ADVERTISING:
              strcpy(new_text, LV_SYMBOL_BLUETOOTH "\nBT activated.\nWaiting for\nconfig...");
