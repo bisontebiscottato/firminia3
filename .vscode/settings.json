@@ -20,7 +20,12 @@
         "gpio.h": "c",
         "api_manager.h": "c",
         "freertos.h": "c",
-        "display_manager.h": "c"
+        "display_manager.h": "c",
+        "esp_timer.h": "c",
+        "net_sockets.h": "c",
+        "ctr_drbg.h": "c",
+        "entropy.h": "c",
+        "ssl.h": "c"
     },
     "idf.flashType": "UART",
     "idf.portWin": "COM6"

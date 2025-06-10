@@ -9,6 +9,8 @@
  #include <stdlib.h>
  #include "esp_log.h"
  #include "esp_err.h"
+ #include "freertos/FreeRTOS.h"
+ #include "freertos/task.h"
  #include "mbedtls/platform.h"
  #include "mbedtls/net_sockets.h"
  #include "mbedtls/esp_debug.h"
@@ -43,7 +45,9 @@
      size_t offset = 0;
      char *buffer = NULL;
      int practices_found = -1;
- 
+
+    vTaskDelay(pdMS_TO_TICKS(1500));
+
      // Manual construction of HTTP/1.0 request
      // In questo esempio, usiamo HTTP/1.0 per forzare la chiusura della connessione.
      char request[512];

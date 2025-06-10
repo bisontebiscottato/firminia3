@@ -416,16 +416,16 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
              strcpy(new_text, LV_SYMBOL_WIFI "\nConnecting\nto Wi-Fi...");
              break;
         case DISPLAY_STATE_CHECKING_API: {
-            char short_user[16];
-            strncpy(short_user, askmesign_user, 15);
-            short_user[15] = '\0';
+             char short_user[16];
+             strncpy(short_user, askmesign_user, 15);
+             short_user[15] = '\0';
             
-            pending_font = &lv_font_montserrat_18;
+             pending_font = &lv_font_montserrat_18;
 
-            snprintf(new_text, sizeof(new_text),
-                    LV_SYMBOL_REFRESH "\nChecking\nsignatures for\n%s...",
-                    short_user);
-            break;
+             snprintf(new_text, sizeof(new_text),
+                     LV_SYMBOL_REFRESH "\nChecking\nsignatures for\n%s...",
+                     short_user);
+             break;
         }
 
          case DISPLAY_STATE_SHOW_PRACTICES:
