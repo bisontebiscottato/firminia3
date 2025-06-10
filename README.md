@@ -39,7 +39,8 @@ Configure Firminia easily using the following JSON structure sent through a BLE 
     "port": "443",
     "url": "https://askmesign.askmesuite.com/api/v2/files/pending?page=0&size=1",
     "token": "your_api_token",
-    "user": "your_user_identifier"
+    "user": "your_user_identifier",
+    "interval": "30000"
 }
 ```
 
