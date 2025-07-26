@@ -51,6 +51,10 @@
      // Manual construction of HTTP/1.0 request
      // In questo esempio, usiamo HTTP/1.0 per forzare la chiusura della connessione.
      char request[512];
+
+     #pragma GCC diagnostic push
+     #pragma GCC diagnostic ignored "-Wformat-truncation"
+
      snprintf(request, sizeof(request),
               "GET %s HTTP/1.0\r\n"
               "Host: %s\r\n"
@@ -60,7 +64,9 @@
               "\r\n",
               web_url, web_server, api_token, askmesign_user);
      ESP_LOGI(TAG, "HTTP Request:\n%s", request);
- 
+
+     #pragma GCC diagnostic pop
+
      // Initialization of mbedTLS
      mbedtls_net_context server_fd;
      mbedtls_ssl_context ssl;
