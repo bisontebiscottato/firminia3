@@ -14,6 +14,8 @@
  #include "esp_log.h"
  #include "cJSON.h"
  #include "esp_random.h"
+ #include "freertos/FreeRTOS.h"
+ #include "freertos/task.h"
  
  // Project module inclusions
  #include "ble_manager.h"
@@ -458,6 +460,9 @@ static void generate_random_device_name(void)
      if (ble_is_connected) {
          ESP_LOGI(TAG, "Disconnessione del dispositivo BLE attivo.");
          esp_ble_gap_disconnect(current_conn_addr);
+         
+         // Add a small delay to ensure disconnection is processed
+         vTaskDelay(pdMS_TO_TICKS(50));
      }
  }
  

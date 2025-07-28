@@ -112,6 +112,10 @@
               ESP_LOGI(TAG, "Valid configuration received via BLE, stopping advertising and restarting system.");
               ble_manager_stop_advertising();
               ble_manager_disconnect();
+              
+              // Add a small delay to ensure configuration is properly saved
+              vTaskDelay(pdMS_TO_TICKS(100));
+              
               esp_restart();
           } else {
               ESP_LOGW(TAG, "No valid BLE configuration received, proceeding with normal operation.");

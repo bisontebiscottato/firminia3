@@ -435,7 +435,7 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
              // Create or update MAC label
              if (mac_label == NULL) {
                  mac_label = lv_label_create(lv_scr_act());
-                 lv_obj_set_style_text_font(mac_label, &lv_font_montserrat_12, 0);
+                 lv_obj_set_style_text_font(mac_label, &lv_font_montserrat_14, 0);
                  lv_obj_set_style_text_color(mac_label, lv_color_white(), 0);
                  lv_obj_set_style_text_align(mac_label, LV_TEXT_ALIGN_CENTER, 0);
                  lv_obj_align(mac_label, LV_ALIGN_CENTER, 0, 60);  // Position below main text
