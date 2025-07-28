@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.0.1                        *
+ *                     FIRMINIA 3.2.8                        *
  *  File: main_flow.c                                        *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -21,9 +21,9 @@
  static const char* TAG = "MainFlow";
  
  #define BUTTON_GPIO                    5
- #define WARMUP_DURATION_MS             3000    // Duration of the warmup phase
+ #define WARMUP_DURATION_MS             5000    // Duration of the warmup phase
  #define POLL_INTERVAL_MS               200     // Polling interval of the button during warmup
- #define BLE_WAIT_DURATION_MS           30000   // Maximum waiting time for BLE configuration
+ #define BLE_WAIT_DURATION_MS           120000   // Maximum waiting time for BLE configuration
  #define DEFAULT_API_CHECK_INTERVAL_MS  60000UL // Waiting time between one API check and the next
  #define BUTTON_POLL_INTERVAL_MS        200     // Polling interval of the button in the waiting loop
 

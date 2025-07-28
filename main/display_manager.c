@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.0                          *
+ *                     FIRMINIA 3.2.8                          *
  *  File: display_manager.c                                  *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -24,6 +24,8 @@
  #include "esp_heap_caps.h"
  #include "esp_lcd_gc9a01.h"
  #include "device_config.h"
+ #include "ble_manager.h"
+ #include "esp_wifi.h"
 
  static const char *TAG = "display";
  
@@ -58,6 +60,7 @@
  #define LVGL_TASK_PRIORITY     2
  
  // Font definitions
+ extern const lv_font_t lv_font_montserrat_12;
  extern const lv_font_t lv_font_montserrat_18;
  extern const lv_font_t lv_font_montserrat_28;
  extern const lv_font_t lv_font_montserrat_48;
@@ -70,6 +73,9 @@
  
  // Global pointer to the LVGL label for displaying state text
  static lv_obj_t *state_label = NULL;
+
+ // Global pointer to the LVGL label for displaying MAC address
+ static lv_obj_t *mac_label = NULL;
 
  // Global buffer for the new text to display
  static char new_text[256] = {0};
@@ -404,17 +410,40 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...\n\nv3.2.2");
+             strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...\n\nv3.2.8");
              break;
-         case DISPLAY_STATE_BLE_ADVERTISING:
-             strcpy(new_text, LV_SYMBOL_BLUETOOTH "\nBT activated.\nWaiting for\nconfig...");
+         case DISPLAY_STATE_BLE_ADVERTISING: {
+             const char* device_name = ble_manager_get_device_name();
+             snprintf(new_text, sizeof(new_text), 
+                     LV_SYMBOL_BLUETOOTH "\n%s\nWaiting for\nconfig...", 
+                     device_name);
              break;
+         }
          case DISPLAY_STATE_CONFIG_UPDATED:
              strcpy(new_text, LV_SYMBOL_OK "\nConfiguration\nupdated!");
              break;
-         case DISPLAY_STATE_WIFI_CONNECTING:
+         case DISPLAY_STATE_WIFI_CONNECTING: {
+             uint8_t mac[6];
+             esp_wifi_get_mac(WIFI_IF_STA, mac);
              strcpy(new_text, LV_SYMBOL_WIFI "\nConnecting\nto Wi-Fi...");
+             
+             // Create MAC address text in smaller font
+             static char mac_text[32];
+             snprintf(mac_text, sizeof(mac_text), "%02X:%02X:%02X:%02X:%02X:%02X", 
+                     mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+             
+             // Create or update MAC label
+             if (mac_label == NULL) {
+                 mac_label = lv_label_create(lv_scr_act());
+                 lv_obj_set_style_text_font(mac_label, &lv_font_montserrat_12, 0);
+                 lv_obj_set_style_text_color(mac_label, lv_color_white(), 0);
+                 lv_obj_set_style_text_align(mac_label, LV_TEXT_ALIGN_CENTER, 0);
+                 lv_obj_align(mac_label, LV_ALIGN_CENTER, 0, 60);  // Position below main text
+             }
+             lv_label_set_text(mac_label, mac_text);
+             lv_obj_clear_flag(mac_label, LV_OBJ_FLAG_HIDDEN);
              break;
+         }
         case DISPLAY_STATE_CHECKING_API: {
              char short_user[16];
              strncpy(short_user, askmesign_user, 15);
@@ -490,6 +519,15 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
      } else {
          // Hide number_label in other states
          lv_obj_add_flag(number_label, LV_OBJ_FLAG_HIDDEN);
+     }
+
+     // Hide MAC label in all states except WIFI_CONNECTING
+     if (mac_label != NULL) {
+         if (state == DISPLAY_STATE_WIFI_CONNECTING) {
+             lv_obj_clear_flag(mac_label, LV_OBJ_FLAG_HIDDEN);
+         } else {
+             lv_obj_add_flag(mac_label, LV_OBJ_FLAG_HIDDEN);
+         }
      }
 
      // Animated arc management (states where needed)

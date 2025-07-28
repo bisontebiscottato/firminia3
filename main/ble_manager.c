@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.0                          *
+ *                     FIRMINIA 3.2.8                          *
  *  File: ble_manager.c                                      *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -13,6 +13,7 @@
  #include "esp_bt_device.h"
  #include "esp_log.h"
  #include "cJSON.h"
+ #include "esp_random.h"
  
  // Project module inclusions
  #include "ble_manager.h"
@@ -32,6 +33,9 @@
  // Variables to manage BLE connection (now managed via GATTS)
  static esp_bd_addr_t current_conn_addr;
  static bool ble_is_connected = false;
+ 
+ // Device name buffer
+ static char device_name_buffer[32] = {0};
  
 /* --- DEFINITIONS FOR GATT SERVICE CREATION --- */
 // UUID for Primary Service declaration (standard 16-bit: 0x2800)
@@ -161,6 +165,22 @@ static uint8_t config_char_uuid[16] = {
      }
      int interval = atoi(interval_str);
      return (interval >= 10000 && interval <= 9000000);
+ }
+
+/**
+ * @brief Generate a random device name with format "FIRMINIA-XXX"
+ * where XXX is a random number between 000 and 999.
+ */
+static void generate_random_device_name(void)
+ {
+     // Generate random number between 0 and 999
+     uint32_t random_num = esp_random() % 1000;
+     
+     // Format the device name
+     snprintf(device_name_buffer, sizeof(device_name_buffer), 
+              "FIRMINIA-%03lu", (unsigned long)random_num);
+     
+     ESP_LOGI(TAG, "Generated device name: %s", device_name_buffer);
  }
 
  /**
@@ -381,8 +401,11 @@ static uint8_t config_char_uuid[16] = {
      // Record the application ID
      esp_ble_gatts_app_register(0);
  
+     // Generate a random device name
+     generate_random_device_name();
+     
      // Set the name of the device, before send the data
-     esp_ble_gap_set_device_name("ESP32-FIRMINIA");
+     esp_ble_gap_set_device_name(device_name_buffer);
  
      // Configure the advertising data
      esp_ble_adv_data_t adv_data = {
@@ -444,5 +467,47 @@ static uint8_t config_char_uuid[16] = {
  void ble_manager_set_config_callback(ble_config_callback_t callback)
  {
      s_config_callback = callback;
+ }
+
+/**
+ * @brief Get the current BLE device name.
+ *
+ * @return Pointer to the device name string.
+ */
+const char* ble_manager_get_device_name(void)
+ {
+     return device_name_buffer;
+ }
+
+/**
+ * @brief Set the BLE device name.
+ *
+ * @param name The new device name.
+ * @return true if successful, false otherwise.
+ */
+bool ble_manager_set_device_name(const char* name)
+ {
+     if (name == NULL || strlen(name) == 0) {
+         return false;
+     }
+     
+     // Check if the name fits in our buffer
+     if (strlen(name) >= sizeof(device_name_buffer)) {
+         ESP_LOGE(TAG, "Device name too long: %s", name);
+         return false;
+     }
+     
+     // Update the device name in the BLE stack
+     esp_err_t ret = esp_ble_gap_set_device_name(name);
+     if (ret != ESP_OK) {
+         ESP_LOGE(TAG, "Failed to set device name: %s", esp_err_to_name(ret));
+         return false;
+     }
+     
+     // Update our local buffer
+     strcpy(device_name_buffer, name);
+     
+     ESP_LOGI(TAG, "Device name set to: %s", name);
+     return true;
  }
  

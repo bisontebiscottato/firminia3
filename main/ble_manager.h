@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.0                          *
+ *                     FIRMINIA 3.2.8                          *
  *  File: ble_manager.h                                      *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -57,6 +57,21 @@ void ble_manager_stop_advertising(void);
 void ble_manager_set_config_callback(ble_config_callback_t callback);
 
 void ble_manager_disconnect(void);
+
+/**
+ * @brief Get the current BLE device name.
+ *
+ * @return Pointer to the device name string.
+ */
+const char* ble_manager_get_device_name(void);
+
+/**
+ * @brief Set the BLE device name.
+ *
+ * @param name The new device name.
+ * @return true if successful, false otherwise.
+ */
+bool ble_manager_set_device_name(const char* name);
 
 #ifdef __cplusplus
 }
