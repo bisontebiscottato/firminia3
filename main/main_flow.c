@@ -30,15 +30,16 @@
  bool force_immediate_check = false;   // se true, salta il periodo di attesa
 
  typedef enum {
-     STATE_WARMING_UP,
-     STATE_BLE_ADVERTISING,
-     STATE_CONFIG_UPDATED,
-     STATE_WIFI_CONNECTING,
-     STATE_CHECKING_API,
-     STATE_SHOW_PRACTICES,
-     STATE_NO_PRACTICES,
-     STATE_NO_WIFI
- } app_state_t;
+    STATE_WARMING_UP,
+    STATE_BLE_ADVERTISING,
+    STATE_CONFIG_UPDATED,
+    STATE_WIFI_CONNECTING,
+    STATE_CHECKING_API,
+    STATE_SHOW_PRACTICES,
+    STATE_NO_PRACTICES,
+    STATE_NO_WIFI,
+    STATE_API_ERROR
+} app_state_t;
  
  static app_state_t s_current_state = STATE_WARMING_UP;
  
@@ -176,7 +177,8 @@
             }
             while (elapsed < interval) {
                 if ((s_current_state == STATE_SHOW_PRACTICES ||
-                    s_current_state == STATE_NO_PRACTICES) &&
+                    s_current_state == STATE_NO_PRACTICES ||
+                    s_current_state == STATE_API_ERROR) &&
                     immediate_check_triggered(&last_button_state)) {
                     ESP_LOGI(TAG, "Button rising edge: immediate API check.");
                     break;
@@ -197,6 +199,7 @@
  
           if (practices < 0) {
               ESP_LOGE(TAG, "API call failed (network issue, server error, or certificate issue).");
+              s_current_state = STATE_API_ERROR;
               display_manager_update(DISPLAY_STATE_API_ERROR, 0);
           }
           else if (practices > 0) {

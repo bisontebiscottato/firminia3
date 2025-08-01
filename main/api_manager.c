@@ -183,12 +183,14 @@
      const char *json_body = extract_json_body(buffer);
      if (json_body == NULL) {
          ESP_LOGE(TAG, "Failed to extract JSON body from HTTP response");
+         practices_found = -1;  // Set error state for JSON extraction failure
          goto exit;
      }
      
      cJSON *json = cJSON_Parse(json_body);
      if (json == NULL) {
          ESP_LOGE(TAG, "Failed to parse JSON body");
+         practices_found = -1;  // Set error state for JSON parsing failure
          goto exit;
      }
      
@@ -199,6 +201,7 @@
          ESP_LOGI(TAG, "Number of Elements: %d", totalElements);
      } else {
          ESP_LOGE(TAG, "JSON does not contain a valid 'totalElements' field");
+         practices_found = -1;  // Set error state for invalid JSON
      }
      cJSON_Delete(json);
      
@@ -213,6 +216,6 @@
      if (buffer) {
          free(buffer);
      }
-     return totalElements;
+     return practices_found;
  }
  
