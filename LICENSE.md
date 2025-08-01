@@ -1,10 +1,10 @@
 GNU Affero General Public License version 3
-Version 3.2.8
+Version 3.2.9
 Submitted: January 30, 2008
 Submitter: Stefano Maffulli
 Approved: March 3, 2008
 Board minutes
-SPDX short identifier: AGPL-3.2.8-only
+SPDX short identifier: AGPL-3.2.9-only
 
 Steward:Free Software Foundation
 Link to license steward's version

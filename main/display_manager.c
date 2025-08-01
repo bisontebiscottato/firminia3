@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.2.8                          *
+ *                     FIRMINIA 3.2.9                          *
  *  File: display_manager.c                                  *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -410,7 +410,7 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...\n\nv3.2.8");
+             strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...\n\nv3.2.9");
              break;
          case DISPLAY_STATE_BLE_ADVERTISING: {
              const char* device_name = ble_manager_get_device_name();
