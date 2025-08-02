@@ -9,9 +9,9 @@ Firminia is a powerful, yet easy-to-use embedded solution designed to streamline
 ## 📸 Firminia V3 Gallery
 
 <div align="center">
-  <img src="support-data/images/20250407_130027.jpg" alt="Firminia V3 - Front View" width="300"/>
-  <img src="support-data/images/20250728_213335.jpg" alt="Firminia V3 - Side View" width="300"/>
-  <img src="support-data/images/20250731_094924.jpg" alt="Firminia V3 - Display View" width="300"/>
+  <img src="support-data/images/20250407_130027.jpg" alt="Firminia V3 - Front View" width="250"/>
+  <img src="support-data/images/20250728_213335.jpg" alt="Firminia V3 - Side View" width="250"/>
+  <img src="support-data/images/20250731_094924.jpg" alt="Firminia V3 - Display View" width="250"/>
 </div>
 
 *Firminia V3 - Your personal assistant for digital signature activities*
