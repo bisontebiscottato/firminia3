@@ -44,6 +44,14 @@ Configure Firminia easily using the following JSON structure sent through a BLE 
 }
 ```
 
+### React TypeScript Configuration App
+
+Firminia can be configured via Bluetooth using a dedicated React TypeScript application:
+
+**[Firminia React App](https://github.com/bisontebiscottato/firminia3-react-app)**
+
+This application provides a user-friendly interface for configuring Firminia's settings via Bluetooth Low Energy (BLE) communication, making the initial setup process much more convenient than using a generic BLE scanner.
+
 ## API Integration
 
 Firminia integrates seamlessly with the AskMeSign REST API:
