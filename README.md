@@ -2,7 +2,7 @@
 
 [![ESP-IDF](https://img.shields.io/badge/ESP--IDF-5.4+-blue.svg)](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/)
 [![LVGL](https://img.shields.io/badge/LVGL-9.2.0-green.svg)](https://lvgl.io/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+[![License](https://img.shields.io/badge/License-AGPL_3.0-blue)](LICENSE.md)
 
 Firminia is a powerful, yet easy-to-use embedded solution designed to streamline your digital signing workflow using the AskMeSign platform. Leveraging BLE and Wi-Fi connectivity, Firminia displays pending documents and their status directly on a compact and efficient LCD display.
 
