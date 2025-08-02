@@ -6,10 +6,21 @@
 
 Firminia is a powerful, yet easy-to-use embedded solution designed to streamline your digital signing workflow using the AskMeSign platform. Leveraging BLE and Wi-Fi connectivity, Firminia displays pending documents and their status directly on a compact and efficient LCD display.
 
+## 📸 Firminia V3 Gallery
+
+<div align="center">
+  <img src="support-data/images/20250407_130027.jpg" alt="Firminia V3 - Front View" width="300"/>
+  <img src="support-data/images/20250728_213335.jpg" alt="Firminia V3 - Side View" width="300"/>
+  <img src="support-data/images/20250731_094924.jpg" alt="Firminia V3 - Display View" width="300"/>
+</div>
+
+*Firminia V3 - Your personal assistant for digital signature activities*
+
 ## 📋 Table of Contents
 
 - [Features](#-features)
 - [Hardware Requirements](#-hardware-requirements)
+- [3D Printing](#️-3d-printing)
 - [Software Requirements](#-software-requirements)
 - [Quick Start](#-quick-start)
 - [Installation](#-installation)
@@ -38,6 +49,30 @@ Firminia is a powerful, yet easy-to-use embedded solution designed to streamline
 - **Display:** Waveshare [1.28-inch Round LCD Module](https://www.waveshare.com/1.28inch-lcd-module.htm), 240×240 pixels, 65K RGB
 - **Push Button:** Normally-open switch for initiating BLE advertising mode
 - **USB Cable:** For powering and programming the ESP32
+
+## 🖨️ 3D Printing
+
+Firminia V3 comes with a custom 3D-printed case designed for optimal component placement and professional appearance.
+
+### 3D Model Files
+
+- **[FirminiaV3.3mf](support-data/FirminiaV3.3mf)** - Complete 3D model for printing the case
+- **[3D Print Files Directory](support-data/3D%20print%20files/)** - Additional printing resources and instructions
+
+### Printing Recommendations
+
+- **Material:** PLA or PETG recommended for durability
+- **Infill:** 20-30% for good strength-to-weight ratio
+- **Layer Height:** 0.2mm for smooth finish
+- **Support:** Minimal support required, mostly overhangs
+- **Print Time:** Approximately 4-6 hours depending on settings
+
+### Assembly Notes
+
+1. **Print Orientation:** Print with the main body flat on the print bed
+2. **Tolerance:** 0.2mm clearance for component fit
+3. **Post-Processing:** Light sanding may be needed for smooth fit
+4. **Hardware:** M2 screws recommended for assembly
 
 ## 💻 Software Requirements
 
