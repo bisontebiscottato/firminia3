@@ -47,8 +47,8 @@ Firminia is a powerful, yet easy-to-use embedded solution designed to streamline
 
 - **ESP32 Development Board:** [Seeed XIAO Esp32-S3](https://www.seeedstudio.com/Seeed-XIAO-ESP32C3-p-5431.html)
 - **Display:** Waveshare [1.28-inch Round LCD Module](https://www.waveshare.com/1.28inch-lcd-module.htm), 240×240 pixels, 65K RGB
-- **Push Button:** Normally-open switch for initiating BLE advertising mode
-- **USB Cable:** For powering and programming the ESP32
+- **Push Button:** [Normally-open switch](https://it.aliexpress.com/item/1005008849196960.html) for initiating BLE advertising mode and forcing check 
+- **USB-C Cable:** For powering and programming the ESP32
 
 ## 🖨️ 3D Printing
 
@@ -57,22 +57,7 @@ Firminia V3 comes with a custom 3D-printed case designed for optimal component p
 ### 3D Model Files
 
 - **[FirminiaV3.3mf](support-data/FirminiaV3.3mf)** - Complete 3D model for printing the case
-- **[3D Print Files Directory](support-data/3D%20print%20files/)** - Additional printing resources and instructions
 
-### Printing Recommendations
-
-- **Material:** PLA or PETG recommended for durability
-- **Infill:** 20-30% for good strength-to-weight ratio
-- **Layer Height:** 0.2mm for smooth finish
-- **Support:** Minimal support required, mostly overhangs
-- **Print Time:** Approximately 4-6 hours depending on settings
-
-### Assembly Notes
-
-1. **Print Orientation:** Print with the main body flat on the print bed
-2. **Tolerance:** 0.2mm clearance for component fit
-3. **Post-Processing:** Light sanding may be needed for smooth fit
-4. **Hardware:** M2 screws recommended for assembly
 
 ## 💻 Software Requirements
 
