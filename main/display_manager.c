@@ -26,6 +26,7 @@
  #include "device_config.h"
  #include "ble_manager.h"
  #include "esp_wifi.h"
+ #include "translations.h"
 
  static const char *TAG = "display";
  
@@ -77,8 +78,8 @@
  // Global pointer to the LVGL label for displaying MAC address
  static lv_obj_t *mac_label = NULL;
 
- // Global buffer for the new text to display
- static char new_text[256] = {0};
+   // Global buffer for the new text to display
+  static char new_text[512] = {0};
  
  // Global pointer for the animated arc
  static lv_obj_t *state_arc = NULL;
@@ -285,6 +286,15 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
               (unsigned long) esp_get_free_heap_size());
      _lock_init(&lvgl_api_lock);
  
+     // Initialize language from configuration
+     language_t current_lang = (language_t)atoi(language);
+     if (!is_valid_language(current_lang)) {
+         current_lang = LANGUAGE_ENGLISH; // Fallback to English
+         ESP_LOGW(TAG, "Invalid language setting, using English as fallback");
+     }
+     set_current_language(current_lang);
+     ESP_LOGI(TAG, "Display language initialized to: %s", get_language_name(current_lang));
+ 
      gpio_config_t bk_gpio_config = {
          .pin_bit_mask = (1ULL << PIN_NUM_BK_LIGHT),
          .mode = GPIO_MODE_OUTPUT,
@@ -407,25 +417,34 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
      // Protect the entire function with a lock
      _lock_acquire(&lvgl_api_lock);
  
+     // Get current language from configuration
+     language_t current_lang = (language_t)atoi(language);
+     if (!is_valid_language(current_lang)) {
+         current_lang = LANGUAGE_ENGLISH; // Fallback to English
+     }
+ 
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             strcpy(new_text, LV_SYMBOL_POWER "\nWarming\nup...\n\nv3.2.9");
+             snprintf(new_text, sizeof(new_text), "%s\n%s\n\nv3.2.9", 
+                     LV_SYMBOL_POWER, get_translated_string(STR_WARMING_UP, current_lang));
              break;
          case DISPLAY_STATE_BLE_ADVERTISING: {
              const char* device_name = ble_manager_get_device_name();
              snprintf(new_text, sizeof(new_text), 
-                     LV_SYMBOL_BLUETOOTH "\n%s\nWaiting for\nconfig...", 
-                     device_name);
+                     "%s\n%s\n%s", 
+                     LV_SYMBOL_BLUETOOTH, device_name, get_translated_string(STR_WAITING_CONFIG, current_lang));
              break;
          }
          case DISPLAY_STATE_CONFIG_UPDATED:
-             strcpy(new_text, LV_SYMBOL_OK "\nConfiguration\nupdated!");
+             snprintf(new_text, sizeof(new_text), "%s\n%s", 
+                     LV_SYMBOL_OK, get_translated_string(STR_CONFIG_UPDATED, current_lang));
              break;
          case DISPLAY_STATE_WIFI_CONNECTING: {
              uint8_t mac[6];
              esp_wifi_get_mac(WIFI_IF_STA, mac);
-             strcpy(new_text, LV_SYMBOL_WIFI "\nConnecting\nto Wi-Fi...");
+             snprintf(new_text, sizeof(new_text), "%s\n%s", 
+                     LV_SYMBOL_WIFI, get_translated_string(STR_CONNECTING_WIFI, current_lang));
              
              // Create MAC address text in smaller font
              static char mac_text[32];
@@ -451,30 +470,37 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
             
              pending_font = &lv_font_montserrat_18;
 
-             snprintf(new_text, sizeof(new_text),
-                     LV_SYMBOL_REFRESH "\nChecking\nsignatures for\n%s...",
-                     short_user);
+             // Format the string with short_user if it contains %s
+             char temp_text[512];
+             snprintf(temp_text, sizeof(temp_text), get_translated_string(STR_CHECKING_SIGNATURES, current_lang), short_user);
+             strcpy(new_text, LV_SYMBOL_REFRESH);
+             strcat(new_text, "\n");
+             strcat(new_text, temp_text);
              break;
         }
 
          case DISPLAY_STATE_SHOW_PRACTICES:
              if (practices_count == 1) {
-                 strcpy(new_text, "\r\ndossier\nto sign!");
+                 strcpy(new_text, get_translated_string(STR_DOSSIER_TO_SIGN, current_lang));
              } else {
-                 strcpy(new_text, "\r\ndossiers\nto sign!");
+                 strcpy(new_text, get_translated_string(STR_DOSSIERS_TO_SIGN, current_lang));
              }
              break;
          case DISPLAY_STATE_NO_PRACTICES:
-             strcpy(new_text, LV_SYMBOL_OK "\nNo dossiers\nto sign.\nRelax.");
+             snprintf(new_text, sizeof(new_text), "%s\n%s", 
+                     LV_SYMBOL_OK, get_translated_string(STR_NO_DOSSIERS, current_lang));
              break;
          case DISPLAY_STATE_NO_WIFI_SLEEPING:
-             strcpy(new_text, LV_SYMBOL_CLOSE "\nNo Wi-Fi.\nsleeping...");
+             snprintf(new_text, sizeof(new_text), "%s\n%s", 
+                     LV_SYMBOL_CLOSE, get_translated_string(STR_NO_WIFI_SLEEPING, current_lang));
              break;
          case DISPLAY_STATE_API_ERROR:
-             strcpy(new_text, LV_SYMBOL_WARNING "\nAPI error!\nE-002");
+             snprintf(new_text, sizeof(new_text), "%s\n%s", 
+                     LV_SYMBOL_WARNING, get_translated_string(STR_API_ERROR, current_lang));
              break;
          default:
-             strcpy(new_text, LV_SYMBOL_BACKSPACE "\nUnknown state.\nE-003");
+             snprintf(new_text, sizeof(new_text), "%s\n%s", 
+                     LV_SYMBOL_BACKSPACE, get_translated_string(STR_UNKNOWN_STATE, current_lang));
              break;
      }
  

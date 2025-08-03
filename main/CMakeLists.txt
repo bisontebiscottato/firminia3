@@ -5,6 +5,7 @@ set(srcs
     "display_manager.c"
     "wifi_manager.c"
     "device_config.c"
+    "translations.c"
     )
 
     idf_component_register(SRCS ${srcs}

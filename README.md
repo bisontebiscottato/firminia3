@@ -42,6 +42,7 @@ Firminia is a powerful, yet easy-to-use embedded solution designed to streamline
 - **🔧 JSON Configuration**: Flexible setup via JSON payload
 - **🔄 Auto-reconnection**: Robust Wi-Fi and API connection handling
 - **📱 Mobile App**: Dedicated React TypeScript configuration interface
+- **🌍 Multi-language Support**: Interface available in English, Italian, French, and Spanish
 
 ## 🔧 Hardware Requirements
 
@@ -56,7 +57,7 @@ Firminia V3 comes with a custom 3D-printed case designed for optimal component p
 
 ### 3D Model Files
 
-- **[FirminiaV3.3mf](support-data/FirminiaV3.3mf)** - Complete 3D model for printing the case
+- **[FirminiaV3.3mf](support-data/3D print files/FirminiaV3.3mf)** - Complete 3D model for printing the case
 
 
 ## 💻 Software Requirements
@@ -128,7 +129,8 @@ Configure Firminia easily using the following JSON structure sent through a BLE 
     "url": "https://sign.askme.it/api/v2/files/pending?page=0&size=1",
     "token": "your_api_token",
     "user": "your_user_identifier",
-    "interval": "30000"
+    "interval": "30000",
+    "language": "0"
 }
 ```
 
@@ -152,6 +154,38 @@ This application provides a user-friendly interface for configuring Firminia's s
 | `token` | Your API authentication token | "your_token_here" |
 | `user` | User identifier | "user123" |
 | `interval` | Polling interval in milliseconds | "30000" |
+| `language` | Interface language (0=EN, 1=IT, 2=FR, 3=ES) | "0" |
+
+## 🌍 Multi-language Support
+
+Firminia V3 supports multiple languages for the user interface. The language can be configured via BLE using the `language` parameter in the JSON configuration.
+
+### Supported Languages
+
+- **0** - English (Default)
+- **1** - Italiano
+- **2** - Francais
+- **3** - Espanol
+
+### Language Configuration
+
+Add the `language` parameter to your JSON configuration:
+
+```json
+{
+    "ssid": "your_wifi_ssid",
+    "password": "your_wifi_password",
+    "server": "sign.askme.it",
+    "port": "443",
+    "url": "https://sign.askme.it/api/v2/files/pending?page=0&size=1",
+    "token": "your_api_token",
+    "user": "your_user_identifier",
+    "interval": "30000",
+    "language": "1"
+}
+```
+
+For detailed information about the localization system, see [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md).
 
 ## 🔌 API Integration
 

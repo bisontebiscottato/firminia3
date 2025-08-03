@@ -1,0 +1,11 @@
+{
+    "ssid": "your_wifi_ssid",
+    "password": "your_wifi_password",
+    "server": "sign.askme.it",
+    "port": "443",
+    "url": "https://sign.askme.it/api/v2/files/pending?page=0&size=1",
+    "token": "your_api_token",
+    "user": "your_user_identifier",
+    "interval": "30000",
+    "language": "1"
+} 

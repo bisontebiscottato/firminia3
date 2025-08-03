@@ -25,6 +25,7 @@ char web_url[WEB_URL_SIZE];
 char api_token[API_TOKEN_SIZE];
 char askmesign_user[ASKMESIGN_USER_SIZE];
 char api_interval_ms[API_INTERVAL_MS_SIZE];
+char language[LANGUAGE_SIZE];
 
 void load_config_from_nvs(void) {
     nvs_handle_t handle;
@@ -41,6 +42,7 @@ void load_config_from_nvs(void) {
         strcpy(api_token, DEFAULT_API_TOKEN);
         strcpy(askmesign_user, DEFAULT_ASKMESIGN_USER);
         strcpy(api_interval_ms, DEFAULT_API_INTERVAL_MS);
+        strcpy(language, DEFAULT_LANGUAGE);
         
         // Save default configuration to NVS for future use
         save_config_to_nvs();
@@ -99,6 +101,12 @@ void load_config_from_nvs(void) {
     if (nvs_get_str(handle, NVS_API_INTERVAL_MS, api_interval_ms, &len) != ESP_OK || strlen(api_interval_ms) == 0) {
         strcpy(api_interval_ms, DEFAULT_API_INTERVAL_MS);
     }
+
+    // Load Language
+    len = sizeof(language);
+    if (nvs_get_str(handle, NVS_LANGUAGE, language, &len) != ESP_OK || strlen(language) == 0) {
+        strcpy(language, DEFAULT_LANGUAGE);
+    }
     
     nvs_close(handle);
     
@@ -111,6 +119,7 @@ void load_config_from_nvs(void) {
     ESP_LOGI(TAG, "API Token: %s", (strlen(api_token) > 0) ? "******" : "Empty!");
     ESP_LOGI(TAG, "AskMeSign User: %s", askmesign_user);
     ESP_LOGI(TAG, "API Interval check: %s", api_interval_ms);
+    ESP_LOGI(TAG, "Language: %s", language);
 
 }
 
@@ -130,6 +139,7 @@ void save_config_to_nvs(void) {
     nvs_set_str(handle, NVS_API_TOKEN, api_token);
     nvs_set_str(handle, NVS_ASKMESIGN_USER, askmesign_user);
     nvs_set_str(handle, NVS_API_INTERVAL_MS, api_interval_ms);
+    nvs_set_str(handle, NVS_LANGUAGE, language);
 
     nvs_commit(handle);
     nvs_close(handle);

@@ -20,7 +20,8 @@
  // Project module inclusions
  #include "ble_manager.h"
  #include "device_config.h"
- #include "display_manager.h"    
+ #include "display_manager.h"
+ #include "translations.h"    
  
  static const char *TAG = "BLE_Manager";
  
@@ -169,6 +170,18 @@ static uint8_t config_char_uuid[16] = {
      return (interval >= 10000 && interval <= 9000000);
  }
 
+ static bool validate_language(const char *language_str) {
+     if (!language_str || strlen(language_str) == 0)
+         return false;
+     for (size_t i = 0; i < strlen(language_str); i++) {
+         if (!isdigit((unsigned char)language_str[i])) {
+             return false;
+         }
+     }
+     int lang = atoi(language_str);
+     return (lang >= 0 && lang < LANGUAGE_COUNT);
+ }
+
 /**
  * @brief Generate a random device name with format "FIRMINIA-XXX"
  * where XXX is a random number between 000 and 999.
@@ -214,6 +227,7 @@ static void generate_random_device_name(void)
      cJSON *token_item = cJSON_GetObjectItemCaseSensitive(json, "token");
      cJSON *user_item = cJSON_GetObjectItemCaseSensitive(json, "user");
      cJSON *interval_item = cJSON_GetObjectItemCaseSensitive(json, "interval");
+     cJSON *language_item = cJSON_GetObjectItemCaseSensitive(json, "language");
  
      bool valid = true;
  
@@ -249,6 +263,10 @@ static void generate_random_device_name(void)
          ESP_LOGE(TAG, "❌ Campo 'interval' mancante");
          valid = false;
      }
+    if (!cJSON_IsString(language_item) || !validate_language(language_item->valuestring)) {
+         ESP_LOGE(TAG, "❌ Campo 'language' mancante o non valido (0=EN, 1=IT, 2=FR, 3=ES)");
+         valid = false;
+     }
      if (!valid) {
          ESP_LOGE(TAG, "❌ JSON non valido. Ignoro la configurazione.");
          cJSON_Delete(json);
@@ -264,10 +282,18 @@ static void generate_random_device_name(void)
      strcpy(api_token, token_item->valuestring);
      strcpy(askmesign_user, user_item->valuestring);
      strcpy(api_interval_ms, interval_item->valuestring);
+     strcpy(language, language_item->valuestring);
 
      // Save the updated configuration to NVS
      save_config_to_nvs();
      ESP_LOGI(TAG, "✅ Configurazione aggiornata e salvata in NVS!");
+ 
+     // Update language setting
+     language_t new_lang = (language_t)atoi(language);
+     if (is_valid_language(new_lang)) {
+         set_current_language(new_lang);
+         ESP_LOGI(TAG, "Language updated to: %s", get_language_name(new_lang));
+     }
  
      // Update UI state
      display_manager_update(DISPLAY_STATE_CONFIG_UPDATED, 0);
