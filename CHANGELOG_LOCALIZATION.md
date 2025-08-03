@@ -1,6 +1,6 @@
 # Changelog - Sistema di Localizzazione
 
-## Versione 3.2.9 - Aggiunta Supporto Multi-lingua
+## Versione 3.4.0 - Aggiunta Supporto Multi-lingua
 
 ### Nuovi File Creati
 
