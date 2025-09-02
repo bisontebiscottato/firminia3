@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.4.0                          *
+ *                     FIRMINIA 3.4.1                          *
  *  File: display_manager.c                                  *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -426,7 +426,7 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             snprintf(new_text, sizeof(new_text), "%s\n%s\n\nv3.4.0", 
+             snprintf(new_text, sizeof(new_text), "%s\n%s\n\nv3.4.1", 
                      LV_SYMBOL_POWER, get_translated_string(STR_WARMING_UP, current_lang));
              break;
          case DISPLAY_STATE_BLE_ADVERTISING: {

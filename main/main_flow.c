@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.4.0                        *
+ *                     FIRMINIA 3.4.1                        *
  *  File: main_flow.c                                        *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -42,11 +42,14 @@
 } app_state_t;
  
  static app_state_t s_current_state = STATE_WARMING_UP;
+ static bool s_config_received_flag = false;
  
  // Callback for BLE (parsing is handled in ble_process_received_data)
  static void on_ble_config_received(const char* json_str)
  {
      ESP_LOGI(TAG, "BLE config received (callback): %s", json_str);
+     // Set flag to indicate new configuration was received
+     s_config_received_flag = true;
      // Parsing and updating take place in ble_process_received_data.
  }
  
@@ -92,25 +95,35 @@
      s_current_state = STATE_WARMING_UP;
      display_manager_update(DISPLAY_STATE_WARMING_UP, 0);
  
-     if (check_button_pressed_during_warmup()) {
+          if (check_button_pressed_during_warmup()) {
           ESP_LOGI(TAG, "Button press detected during warmup. Entering BLE configuration mode.");
           s_current_state = STATE_BLE_ADVERTISING;
           display_manager_update(DISPLAY_STATE_BLE_ADVERTISING, 0);
- 
-          // Reset of the current configuration
-          strcpy(wifi_ssid, DEFAULT_WIFI_SSID);
-          save_config_to_nvs();
+
+         // Never modify saved configuration until valid BLE config is received
+         ESP_LOGI(TAG, "Entering BLE mode - existing configuration preserved until valid config received");
  
           ble_manager_start_advertising();
           ble_manager_set_config_callback(on_ble_config_received);
  
           uint32_t waited = 0;
-          while (waited < BLE_WAIT_DURATION_MS && !is_config_valid()) {
+          bool new_config_received = false;
+          
+          // Always wait for BLE configuration, regardless of current config validity
+          while (waited < BLE_WAIT_DURATION_MS && !new_config_received) {
               vTaskDelay(pdMS_TO_TICKS(POLL_INTERVAL_MS));
               waited += POLL_INTERVAL_MS;
+              
+              // Check if a new configuration was received via BLE callback
+              // This will be set to true in the BLE callback when valid config is received
+              if (s_config_received_flag) {
+                  new_config_received = true;
+                  s_config_received_flag = false; // Reset flag
+              }
           }
-          if (is_config_valid()) {
-              ESP_LOGI(TAG, "Valid configuration received via BLE, stopping advertising and restarting system.");
+          
+          if (new_config_received) {
+              ESP_LOGI(TAG, "New configuration received via BLE, stopping advertising and restarting system.");
               ble_manager_stop_advertising();
               ble_manager_disconnect();
               
@@ -119,7 +132,7 @@
               
               esp_restart();
           } else {
-              ESP_LOGW(TAG, "No valid BLE configuration received, proceeding with normal operation.");
+              ESP_LOGW(TAG, "No new BLE configuration received, proceeding with existing configuration.");
               ble_manager_stop_advertising();
           }
      } else {
