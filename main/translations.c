@@ -63,7 +63,7 @@ static const char* translations[STR_COUNT][LANGUAGE_COUNT] = {
     // STR_NO_DOSSIERS
     {
         "No dossiers\nto sign.\nRelax.", // English
-        "Nessuna pratica\nda firmare.\nRilassati.", // Italian
+        "Niente\nda firmare.\nRilassati.", // Italian
         "Aucune enveloppe\na signer.\nDetendez-vous.", // French
         "No hay practicas\npara firmar.\nRelajate." // Spanish
     },
