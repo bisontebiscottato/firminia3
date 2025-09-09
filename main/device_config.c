@@ -146,3 +146,35 @@ void save_config_to_nvs(void) {
     
     ESP_LOGI(TAG, "Configuration saved successfully to NVS!");
 }
+
+bool is_config_default(void) {
+    // Configuration is considered default if critical parameters are empty or match defaults
+    return (strlen(wifi_ssid) == 0 || 
+            strlen(wifi_password) == 0 || 
+            strlen(api_token) == 0 || 
+            strlen(askmesign_user) == 0 ||
+            strcmp(wifi_ssid, DEFAULT_WIFI_SSID) == 0 ||
+            strcmp(wifi_password, DEFAULT_WIFI_PASSWORD) == 0 ||
+            strcmp(api_token, DEFAULT_API_TOKEN) == 0 ||
+            strcmp(askmesign_user, DEFAULT_ASKMESIGN_USER) == 0);
+}
+
+void reset_config_to_default(void) {
+    ESP_LOGW(TAG, "🔄 Resetting configuration to default values...");
+    
+    // Set all configuration parameters to default values
+    strcpy(wifi_ssid, DEFAULT_WIFI_SSID);
+    strcpy(wifi_password, DEFAULT_WIFI_PASSWORD);
+    strcpy(web_server, DEFAULT_WEB_SERVER);
+    strcpy(web_port, DEFAULT_WEB_PORT);
+    strcpy(web_url, DEFAULT_WEB_URL);
+    strcpy(api_token, DEFAULT_API_TOKEN);
+    strcpy(askmesign_user, DEFAULT_ASKMESIGN_USER);
+    strcpy(api_interval_ms, DEFAULT_API_INTERVAL_MS);
+    strcpy(language, DEFAULT_LANGUAGE);
+    
+    // Save the default configuration to NVS
+    save_config_to_nvs();
+    
+    ESP_LOGW(TAG, "✅ Configuration reset to default and saved to NVS!");
+}

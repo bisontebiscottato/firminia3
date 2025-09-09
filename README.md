@@ -43,6 +43,9 @@ Firminia is a powerful, yet easy-to-use embedded solution designed to streamline
 - **🔄 Auto-reconnection**: Robust Wi-Fi and API connection handling
 - **📱 Mobile App**: Dedicated React TypeScript configuration interface
 - **🌍 Multi-language Support**: Interface available in English, Italian, French, and Spanish
+- **🔒 Secure Configuration**: No sensitive data stored in firmware
+- **🔵 Auto BLE Mode**: Automatically enters configuration mode when default settings detected
+- **🔄 Configuration Reset**: Hold button for 5 seconds to reset configuration to defaults
 
 ## 🔧 Hardware Requirements
 
@@ -187,6 +190,52 @@ Add the `language` parameter to your JSON configuration:
 
 For detailed information about the localization system, see [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md).
 
+## 🔒 Security & Configuration Management
+
+### Secure Configuration
+Firminia V3 implements secure configuration practices:
+
+- **No Hardcoded Credentials**: No sensitive data (Wi-Fi passwords, API tokens, user emails) stored in firmware
+- **Default Configuration Detection**: Automatically detects when using default/empty configuration
+- **Automatic BLE Mode**: Enters configuration mode automatically when default settings are detected
+- **Configuration Validation**: Validates all configuration parameters before saving
+
+### Configuration Reset Feature
+
+Firminia V3 includes a built-in configuration reset mechanism for easy maintenance:
+
+#### How to Reset Configuration
+1. **During any operational state** (except initial warm-up)
+2. **Hold the button for 5 seconds continuously**
+3. **System will show progress** in logs every second
+4. **Automatic restart** after reset completion
+5. **Enters BLE mode** automatically for reconfiguration
+
+#### When Reset is Available
+- ✅ **BLE Configuration Mode**
+- ✅ **Wi-Fi Connection States**  
+- ✅ **API Checking States**
+- ✅ **Display States** (showing/no practices)
+- ✅ **Error States**
+- ❌ **Warm-up Phase** (excluded for safety)
+
+### First Boot Behavior
+
+#### New Device (Default Configuration)
+```
+Power On → Warm-up → Load Config → Default Detected → Auto BLE Mode → Wait for Configuration
+```
+
+#### Configured Device
+```
+Power On → Warm-up → Load Config → Valid Config → Connect Wi-Fi → Normal Operation
+```
+
+#### Manual Configuration Mode
+```
+Power On → Warm-up → Button Press → BLE Mode → Wait for Configuration
+```
+
 ## 🔌 API Integration
 
 Firminia integrates seamlessly with the AskMeSign REST API:
@@ -249,13 +298,28 @@ idf.py -p /dev/YOUR_SERIAL_PORT flash monitor
 
 ## 📱 Usage
 
-### Initial Setup
+### Initial Setup (New Device)
 
-1. **Power on the device** and wait for initialization
-2. **Press the configured button** to enable BLE advertising
-3. **Connect via Bluetooth** using the React app or BLE scanner
+1. **Power on the device** and wait for warm-up phase
+2. **Device automatically enters BLE mode** when default configuration is detected
+3. **Connect via Bluetooth** using the [React app](https://github.com/bisontebiscottato/firminia3-react-app) or BLE scanner
 4. **Send configuration JSON** with your Wi-Fi and API credentials
-5. **Verify connection** - the display should show connection status
+5. **Device automatically restarts** and begins normal operation
+6. **Verify connection** - the display should show connection status
+
+### Manual Configuration Mode
+
+1. **During warm-up phase**, press and release the button
+2. **BLE advertising starts** for 2 minutes
+3. **Connect and configure** as described above
+4. **Device restarts** after receiving valid configuration
+
+### Configuration Reset
+
+1. **During normal operation**, hold the button for 5 seconds
+2. **Watch progress logs** - device shows countdown
+3. **Configuration resets** to defaults automatically
+4. **Device restarts** and enters BLE mode for reconfiguration
 
 ### Normal Operation
 
@@ -263,6 +327,9 @@ idf.py -p /dev/YOUR_SERIAL_PORT flash monitor
 - **Display updates:** Round LCD shows current pending document count
 - **Status indicators:** Visual feedback for connection and error states
 - **Auto-reconnection:** Automatic Wi-Fi and API reconnection on failures
+- **Button functions:**
+  - **Short press during warmup:** Enter BLE configuration mode
+  - **Hold for 5 seconds (anytime):** Reset configuration to defaults
 
 
 ## 🔧 Troubleshooting
@@ -271,11 +338,14 @@ idf.py -p /dev/YOUR_SERIAL_PORT flash monitor
 
 | Issue | Solution |
 |-------|----------|
-| **Wi-Fi connection fails** | Verify SSID/password in configuration JSON |
-| **BLE not advertising** | Press button again, check button wiring |
+| **Device stuck in BLE mode** | Check configuration JSON format, ensure all required fields are present |
+| **Wi-Fi connection fails** | Verify SSID/password in configuration JSON, try configuration reset |
+| **BLE not advertising** | Press button again, check button wiring, or wait for auto-BLE mode |
 | **API requests failing** | Verify token and server URL, check network connectivity |
 | **Display not working** | Check SPI connections, verify GC9A01 driver |
 | **Build errors** | Ensure ESP-IDF v5.4+, run `idf.py clean` |
+| **Configuration reset not working** | Ensure button is held for full 5 seconds, check button wiring |
+| **Device won't enter BLE mode** | Try configuration reset (hold button 5 seconds) to force BLE mode |
 
 ### Debug Commands
 
