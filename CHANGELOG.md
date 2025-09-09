@@ -1,5 +1,29 @@
 # Changelog - Firminia V3
 
+## Versione 3.5.1 - Miglioramenti QR Code
+
+### 📱 Interfaccia Utente
+
+#### QR Code Ottimizzato
+- **QR Code reale implementato** con dati RGB565 da LVGL Image Converter
+- **Dimensioni aumentate del 25%** per migliore leggibilità (da 100x100 a 125x125 pixel)
+- **Centratura perfetta** tramite transform pivot point
+- **Qualità migliorata** mantenendo la risoluzione originale
+- **Alternanza fluida** tra testo e QR code ogni 3 secondi durante BLE advertising
+
+#### Modifiche Tecniche
+- **`main/qr_image.c`**: Aggiornato da LV_COLOR_FORMAT_I1 a LV_COLOR_FORMAT_RGB565
+- **`main/display_manager.c`**: Implementata scalatura con `lv_obj_set_style_transform_scale()`
+- **Transform pivot**: Impostato al centro (50%, 50%) per scalatura bilanciata
+- **Logging migliorato**: Aggiunta informazione sulle dimensioni QR code
+
+### 🔧 Correzioni
+- **Risolto problema centratura**: QR code ora perfettamente centrato dopo scaling
+- **Compatibilità LVGL 9.x**: Struttura dati immagine corretta
+- **Performance ottimizzate**: Scaling hardware-accelerated
+
+---
+
 ## Versione 3.5.0 - Sicurezza e Gestione Configurazione
 
 ### 🔒 Sicurezza Migliorata

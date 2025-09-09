@@ -6,6 +6,7 @@ set(srcs
     "wifi_manager.c"
     "device_config.c"
     "translations.c"
+    "qr_image.c"
     )
 
     idf_component_register(SRCS ${srcs}

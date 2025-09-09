@@ -46,6 +46,7 @@ Firminia is a powerful, yet easy-to-use embedded solution designed to streamline
 - **🔒 Secure Configuration**: No sensitive data stored in firmware
 - **🔵 Auto BLE Mode**: Automatically enters configuration mode when default settings detected
 - **🔄 Configuration Reset**: Hold button for 5 seconds to reset configuration to defaults
+- **📱 Enhanced QR Code**: 25% larger QR code with perfect centering for improved scanning
 
 ## 🔧 Hardware Requirements
 

@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.0                          *
+ *                     FIRMINIA 3.5.1                          *
  *  File: display_manager.c                                  *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -25,8 +25,9 @@
  #include "esp_lcd_gc9a01.h"
  #include "device_config.h"
  #include "ble_manager.h"
- #include "esp_wifi.h"
- #include "translations.h"
+#include "esp_wifi.h"
+#include "translations.h"
+#include "qr_image.h"
 
  static const char *TAG = "display";
  
@@ -75,11 +76,22 @@
  // Global pointer to the LVGL label for displaying state text
  static lv_obj_t *state_label = NULL;
 
- // Global pointer to the LVGL label for displaying MAC address
- static lv_obj_t *mac_label = NULL;
+// Global pointer to the LVGL label for displaying MAC address
+static lv_obj_t *mac_label = NULL;
 
-   // Global buffer for the new text to display
-  static char new_text[512] = {0};
+// Global pointer to the QR code image object
+static lv_obj_t *qr_image = NULL;
+
+// BLE alternating display variables
+static lv_timer_t *ble_alternate_timer = NULL;
+static bool ble_show_text = true;  // true = show text, false = show QR code
+#define BLE_ALTERNATE_INTERVAL_MS 3000  // 3 seconds
+
+// QR Code display mode: 0 = placeholder rectangle, 1 = actual QR image
+#define QR_DISPLAY_MODE 1
+
+  // Global buffer for the new text to display
+ static char new_text[512] = {0};
  
  // Global pointer for the animated arc
  static lv_obj_t *state_arc = NULL;
@@ -269,13 +281,131 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
  //------------------------------------------------------------------------------
  // arc_anim_cb - Ruota l'arco
  //------------------------------------------------------------------------------
- static void arc_anim_cb(void *var, int32_t angle)
- {
-     lv_obj_t *arc = (lv_obj_t *)var;
-     if (!arc) return;
-     int16_t start = angle % 360;
-     lv_arc_set_angles(arc, start, start + ARC_SPAN);
- }
+static void arc_anim_cb(void *var, int32_t angle)
+{
+    lv_obj_t *arc = (lv_obj_t *)var;
+    if (!arc) return;
+    int16_t start = angle % 360;
+    lv_arc_set_angles(arc, start, start + ARC_SPAN);
+}
+
+//------------------------------------------------------------------------------
+// ble_alternate_timer_cb - Alterna tra testo e QR code durante BLE advertising
+//------------------------------------------------------------------------------
+static void ble_alternate_timer_cb(lv_timer_t *timer)
+{
+    ESP_LOGI(TAG, "🔄 BLE timer callback triggered, switching to %s", ble_show_text ? "QR" : "text");
+    
+    // Note: Timer callbacks are already executed in LVGL context, no need for lock
+    
+    // Toggle between text and QR code
+    ble_show_text = !ble_show_text;
+    
+    if (ble_show_text) {
+        // Show text, hide QR code
+        ESP_LOGI(TAG, "🔵 BLE: Switching to text mode");
+        if (state_label) {
+            lv_obj_clear_flag(state_label, LV_OBJ_FLAG_HIDDEN);
+            ESP_LOGI(TAG, "✅ Text label shown");
+        } else {
+            ESP_LOGW(TAG, "⚠️ State label is NULL!");
+        }
+        if (qr_image) {
+            lv_obj_add_flag(qr_image, LV_OBJ_FLAG_HIDDEN);
+            ESP_LOGI(TAG, "✅ QR image hidden");
+        }
+        ESP_LOGI(TAG, "🔵 BLE: Text mode activated");
+    } else {
+        // Show QR code, hide text
+        ESP_LOGI(TAG, "📱 BLE: Switching to QR mode");
+        if (state_label) {
+            lv_obj_add_flag(state_label, LV_OBJ_FLAG_HIDDEN);
+            ESP_LOGI(TAG, "✅ Text label hidden");
+        } else {
+            ESP_LOGW(TAG, "⚠️ State label is NULL!");
+        }
+        
+        // Create QR placeholder if it doesn't exist
+        ESP_LOGI(TAG, "📱 Checking QR image object...");
+        if (qr_image == NULL) {
+            ESP_LOGI(TAG, "📱 Creating new QR object (mode: %d)...", QR_DISPLAY_MODE);
+            
+            // Safety check for screen object
+            lv_obj_t *screen = lv_scr_act();
+            if (screen == NULL) {
+                ESP_LOGE(TAG, "❌ Screen object is NULL! Cannot create QR object");
+                return;
+            }
+            ESP_LOGI(TAG, "✅ Screen object is valid");
+            
+            if (QR_DISPLAY_MODE == 1) {
+                // Use actual QR image
+                ESP_LOGI(TAG, "📱 Creating QR image object...");
+                qr_image = lv_image_create(screen);
+                if (qr_image == NULL) {
+                    ESP_LOGE(TAG, "❌ Failed to create QR image object");
+                    return;
+                }
+                lv_image_set_src(qr_image, &qr_code_img);
+                
+                // Set transform pivot to center before scaling
+                lv_obj_set_style_transform_pivot_x(qr_image, 50, LV_PART_MAIN);  // 50% = center
+                lv_obj_set_style_transform_pivot_y(qr_image, 50, LV_PART_MAIN);  // 50% = center
+                
+                // Scale QR code by 25% using transform
+                lv_obj_set_style_transform_scale(qr_image, 256 * 125 / 100, 0);  // 125% scale (256 = 100%)
+                
+                lv_obj_align(qr_image, LV_ALIGN_CENTER, 0, 0);
+                ESP_LOGI(TAG, "✅ QR image created successfully with 25%% scaling (centered)");
+            } else {
+                // Use simple label placeholder - much safer than complex objects
+                ESP_LOGI(TAG, "📱 Creating simple QR label...");
+                qr_image = lv_label_create(screen);
+                if (qr_image == NULL) {
+                    ESP_LOGE(TAG, "❌ Failed to create QR label object");
+                    return;
+                }
+                lv_label_set_text(qr_image, "📱\nQR CODE\nSCAN ME");
+                lv_obj_set_style_text_color(qr_image, lv_color_hex(0x00FF00), 0);  // Verde brillante
+                lv_obj_set_style_text_font(qr_image, &lv_font_montserrat_28, 0);   // Font più grande
+                lv_obj_set_style_text_align(qr_image, LV_TEXT_ALIGN_CENTER, 0);
+                lv_obj_align(qr_image, LV_ALIGN_CENTER, 0, 0);
+                
+                // Aggiungiamo un background per renderlo più visibile
+                lv_obj_set_style_bg_color(qr_image, lv_color_hex(0x000080), 0);  // Blu scuro
+                lv_obj_set_style_bg_opa(qr_image, LV_OPA_50, 0);  // Semi-trasparente
+                lv_obj_set_style_radius(qr_image, 10, 0);  // Angoli arrotondati
+                lv_obj_set_style_pad_all(qr_image, 10, 0);  // Padding interno
+                
+                // Assicuriamoci che sia visibile
+                lv_obj_clear_flag(qr_image, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(qr_image, LV_OBJ_FLAG_CLICKABLE);  // Renderlo interattivo
+                ESP_LOGI(TAG, "✅ QR label created successfully");
+            }
+        } else {
+            ESP_LOGI(TAG, "📱 QR object already exists, reusing it");
+        }
+        
+        ESP_LOGI(TAG, "📱 Making QR object visible...");
+        if (qr_image != NULL) {
+            lv_obj_clear_flag(qr_image, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(qr_image);  // Porta in primo piano
+            
+            // Assicuriamoci che sia sopra l'arco rotante
+            if (state_arc != NULL) {
+                lv_obj_move_to_index(qr_image, -1);  // Metti sopra tutto
+            }
+            
+            lv_obj_invalidate(qr_image);       // Forza il ridisegno
+            ESP_LOGI(TAG, "✅ QR object is now visible and in foreground");
+            ESP_LOGI(TAG, "📱 BLE: QR mode activated");
+        } else {
+            ESP_LOGE(TAG, "❌ QR object is NULL, cannot make visible");
+        }
+    }
+    
+    ESP_LOGI(TAG, "🔄 BLE timer callback completed");
+}
  
  //------------------------------------------------------------------------------
  // display_manager_init
@@ -429,13 +559,20 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
              snprintf(new_text, sizeof(new_text), "%s\n%s\n\nv3.5.0", 
                      LV_SYMBOL_POWER, get_translated_string(STR_WARMING_UP, current_lang));
              break;
-         case DISPLAY_STATE_BLE_ADVERTISING: {
-             const char* device_name = ble_manager_get_device_name();
-             snprintf(new_text, sizeof(new_text), 
-                     "%s\n%s\n%s", 
-                     LV_SYMBOL_BLUETOOTH, device_name, get_translated_string(STR_WAITING_CONFIG, current_lang));
-             break;
-         }
+        case DISPLAY_STATE_BLE_ADVERTISING: {
+            const char* device_name = ble_manager_get_device_name();
+            snprintf(new_text, sizeof(new_text), 
+                    "%s\n%s\n%s", 
+                    LV_SYMBOL_BLUETOOTH, device_name, get_translated_string(STR_WAITING_CONFIG, current_lang));
+            
+            // Start alternating timer if not already running
+            if (ble_alternate_timer == NULL) {
+                ble_show_text = true;  // Start with text
+                ble_alternate_timer = lv_timer_create(ble_alternate_timer_cb, BLE_ALTERNATE_INTERVAL_MS, NULL);
+                ESP_LOGI(TAG, "🔵 Started BLE alternating display timer");
+            }
+            break;
+        }
          case DISPLAY_STATE_CONFIG_UPDATED:
              snprintf(new_text, sizeof(new_text), "%s\n%s", 
                      LV_SYMBOL_OK, get_translated_string(STR_CONFIG_UPDATED, current_lang));
@@ -547,14 +684,43 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
          lv_obj_add_flag(number_label, LV_OBJ_FLAG_HIDDEN);
      }
 
-     // Hide MAC label in all states except WIFI_CONNECTING
-     if (mac_label != NULL) {
-         if (state == DISPLAY_STATE_WIFI_CONNECTING) {
-             lv_obj_clear_flag(mac_label, LV_OBJ_FLAG_HIDDEN);
-         } else {
-             lv_obj_add_flag(mac_label, LV_OBJ_FLAG_HIDDEN);
-         }
-     }
+    // Hide MAC label in all states except WIFI_CONNECTING
+    if (mac_label != NULL) {
+        if (state == DISPLAY_STATE_WIFI_CONNECTING) {
+            lv_obj_clear_flag(mac_label, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(mac_label, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    // BLE alternating display management
+    if (state == DISPLAY_STATE_BLE_ADVERTISING) {
+        // Timer is already started in the switch case above
+        // Make sure text is visible initially if we're showing text
+        if (ble_show_text && state_label) {
+            lv_obj_clear_flag(state_label, LV_OBJ_FLAG_HIDDEN);
+        }
+        // Hide QR image initially if showing text
+        if (ble_show_text && qr_image) {
+            lv_obj_add_flag(qr_image, LV_OBJ_FLAG_HIDDEN);
+        }
+    } else {
+        // Stop BLE alternating timer when leaving BLE state
+        if (ble_alternate_timer != NULL) {
+            lv_timer_del(ble_alternate_timer);
+            ble_alternate_timer = NULL;
+            ble_show_text = true;  // Reset to text for next time
+            ESP_LOGI(TAG, "🔵 Stopped BLE alternating display timer");
+        }
+        // Hide QR image in non-BLE states
+        if (qr_image != NULL) {
+            lv_obj_add_flag(qr_image, LV_OBJ_FLAG_HIDDEN);
+        }
+        // Make sure text label is visible in non-BLE states
+        if (state_label != NULL) {
+            lv_obj_clear_flag(state_label, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
 
      // Animated arc management (states where needed)
      bool arc_needed = (state == DISPLAY_STATE_WARMING_UP ||
