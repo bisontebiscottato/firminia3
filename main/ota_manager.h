@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.2                          *
+ *                     FIRMINIA 3.5.3                          *
  *  File: ota_manager.h                                      *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  *  Description: Secure OTA Update Manager                   *

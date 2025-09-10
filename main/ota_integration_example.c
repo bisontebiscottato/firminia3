@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.2                          *
+ *                     FIRMINIA 3.5.3                          *
  *  File: ota_integration_example.c                         *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  *  Description: Example OTA integration for main_flow      *
@@ -20,7 +20,7 @@ static const char *TAG = "OTA_INTEGRATION";
 static TimerHandle_t ota_check_timer = NULL;
 
 // Current firmware version
-#define CURRENT_FIRMWARE_VERSION "3.5.2"
+#define CURRENT_FIRMWARE_VERSION "3.5.3"
 
 // OTA progress callback
 static void ota_progress_callback(int percentage, ota_status_t status, ota_error_t error)

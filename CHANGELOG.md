@@ -1,6 +1,6 @@
 # Changelog - Firminia V3
 
-## Versione 3.5.2 - Sistema OTA Sicuro
+## Versione 3.5.3 - Sistema OTA Sicuro
 
 ### 🚀 Nuove Funzionalità
 

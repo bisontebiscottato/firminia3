@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.2                        *
+ *                     FIRMINIA 3.5.3                        *
  *  File: main_flow.c                                        *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  *                                                            *
@@ -42,7 +42,8 @@
 // OTA variables
 static uint32_t last_ota_check = 0;
 static bool ota_in_progress = false;
-#define CURRENT_FIRMWARE_VERSION "3.5.2"
+static bool force_display_refresh = false;
+#define CURRENT_FIRMWARE_VERSION "3.5.3"
 
  typedef enum {
     STATE_WARMING_UP,
@@ -87,18 +88,10 @@ static bool is_config_valid(void)
      return false;
  }
  
-// Function to detect the rising edge of the button.
-// last_state is a pointer to the button state from the previous reading.
-static bool immediate_check_triggered(int *last_state)
-{
-    int current = gpio_get_level(BUTTON_GPIO);
-    bool triggered = false;
-    if (*last_state == 0 && current == 1) {
-         triggered = true;
-    }
-    *last_state = current;
-    return triggered;
-}
+// Global variable to track long press in progress
+static bool g_long_press_in_progress = false;
+
+// Function removed - logic integrated directly in the main loop
 
 
 // Function to check if button is held for reset duration
@@ -230,8 +223,23 @@ static void check_ota_updates(void)
         }
     } else if (err == ESP_ERR_NOT_FOUND) {
         ESP_LOGI(TAG, "ℹ️ No firmware updates available");
+        
+        // Show "No Updates" message for 3 seconds
+        display_manager_update(DISPLAY_STATE_NO_OTA_UPDATE, 0);
+        vTaskDelay(pdMS_TO_TICKS(3000));
+        
+        // Force display refresh to return to normal state
+        force_display_refresh = true;
+        
     } else {
         ESP_LOGE(TAG, "❌ Failed to check for updates: %s", esp_err_to_name(err));
+        
+        // Show error message for 3 seconds
+        display_manager_update(DISPLAY_STATE_API_ERROR, 0);
+        vTaskDelay(pdMS_TO_TICKS(3000));
+        
+        // Force display refresh to return to normal state
+        force_display_refresh = true;
     }
     
     last_ota_check = xTaskGetTickCount() * portTICK_PERIOD_MS;
@@ -375,16 +383,43 @@ static void check_ota_updates(void)
      int last_button_state = gpio_get_level(BUTTON_GPIO);
  
     while (1) {
-
-        /* -- 0. Check for button actions (OTA: 5s, Reset: 10s) --- */
-        if (s_current_state != STATE_WARMING_UP && gpio_get_level(BUTTON_GPIO) == 1) {
+        
+        /* -- 0. Check for button actions in ALL states (OTA: 5s, Reset: 10s) --- */
+        if (s_current_state != STATE_WARMING_UP) {
+            // Check for direct button press or flag from API wait loop
+            int current_button = gpio_get_level(BUTTON_GPIO);
+            
+            if (g_long_press_in_progress) {
+                ESP_LOGI(TAG, "🚨 Long press flag detected from API wait loop!");
+            }
+            
+            if (current_button == 1 || g_long_press_in_progress) {
             uint32_t hold_start = xTaskGetTickCount() * portTICK_PERIOD_MS;
             uint32_t hold_time = 0;
             bool ota_triggered = false;
+            bool was_long_press_detected = g_long_press_in_progress; // Remember the state
             
-            ESP_LOGI(TAG, "🔘 Button pressed - monitoring hold duration...");
+            // If long press was already detected by immediate_check_triggered, skip the wait
+            if (g_long_press_in_progress) {
+                ESP_LOGI(TAG, "🔘 Long press already detected - continuing with hold monitoring...");
+                g_long_press_in_progress = false; // Reset the flag
+                // Adjust hold_start to account for the 1 second already elapsed
+                hold_start -= 1000;
+            } else {
+                // Wait 1 second to see if this is a short press (handled elsewhere) or long press
+                ESP_LOGI(TAG, "🔘 Button pressed - waiting to distinguish short/long press...");
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                
+                // If button was released during the 1-second wait, ignore (short press)
+                if (gpio_get_level(BUTTON_GPIO) == 0) {
+                    ESP_LOGI(TAG, "🔘 Button released during initial wait - ignoring (short press)");
+                    continue;
+                }
+                
+                ESP_LOGI(TAG, "🔘 Long press confirmed - monitoring hold duration...");
+            }
             
-            // Monitor button hold duration
+            // Monitor button hold duration (starting from 1 second)
             while (gpio_get_level(BUTTON_GPIO) == 1) {
                 vTaskDelay(pdMS_TO_TICKS(BUTTON_POLL_INTERVAL_MS));
                 hold_time = (xTaskGetTickCount() * portTICK_PERIOD_MS) - hold_start;
@@ -394,24 +429,29 @@ static void check_ota_updates(void)
                     ESP_LOGI(TAG, "🔘 Button held for %lu ms...", hold_time);
                 }
                 
-                // Trigger OTA at 5 seconds (only once)
-                if (!ota_triggered && hold_time >= OTA_BUTTON_HOLD_TIME_MS && 
+                // Trigger OTA at 4 seconds additional (5 seconds total: 1s wait + 4s hold)
+                if (!ota_triggered && hold_time >= (OTA_BUTTON_HOLD_TIME_MS - 1000) && 
                     !ota_in_progress && wifi_manager_is_connected()) {
-                    ESP_LOGI(TAG, "🚀 OTA update triggered after %lu ms!", hold_time);
+                    ESP_LOGI(TAG, "🚀 OTA update triggered after %lu ms total!", hold_time + 1000);
                     ota_triggered = true;
                     check_ota_updates();
                 }
                 
-                // Trigger reset at 10 seconds
-                if (hold_time >= RESET_BUTTON_HOLD_TIME_MS) {
-                    ESP_LOGW(TAG, "🔄 Configuration reset triggered after %lu ms!", hold_time);
+                // Trigger reset at 9 seconds additional (10 seconds total: 1s wait + 9s hold)
+                if (hold_time >= (RESET_BUTTON_HOLD_TIME_MS - 1000)) {
+                    ESP_LOGW(TAG, "🔄 Configuration reset triggered after %lu ms total!", hold_time + 1000);
                     reset_config_to_default();
                     vTaskDelay(pdMS_TO_TICKS(1000));
                     esp_restart();
                 }
             }
             
-            ESP_LOGI(TAG, "🔘 Button released after %lu ms", hold_time);
+            // Calculate total time 
+            // If was_long_press_detected: 1 second already counted in hold_start adjustment
+            // If not: add 1 second for the initial wait
+            uint32_t total_time = hold_time + (was_long_press_detected ? 0 : 1000);
+            ESP_LOGI(TAG, "🔘 Button released after %lu ms total", total_time);
+            }
         }
         
         /* -- 0.5. Check for OTA updates (periodically, when WiFi connected) --- */
@@ -449,22 +489,56 @@ static void check_ota_updates(void)
                 interval = DEFAULT_API_CHECK_INTERVAL_MS; // se conversione fallita, uso il default
             }
             while (elapsed < interval) {
+                // Check for short button press for immediate API check
                 if ((s_current_state == STATE_SHOW_PRACTICES ||
                     s_current_state == STATE_NO_PRACTICES ||
-                    s_current_state == STATE_API_ERROR) &&
-                    immediate_check_triggered(&last_button_state)) {
-                    ESP_LOGI(TAG, "Button rising edge: immediate API check.");
-                    break;
+                    s_current_state == STATE_API_ERROR)) {
+                    
+                    int current = gpio_get_level(BUTTON_GPIO);
+                    if (last_button_state == 0 && current == 1) {
+                        ESP_LOGI(TAG, "🔘 Button press detected during API wait - checking duration...");
+                        
+                        // Wait up to 1 second to see if it's a short or long press
+                        uint32_t press_start = xTaskGetTickCount() * portTICK_PERIOD_MS;
+                        uint32_t hold_time = 0;
+                        
+                        while (gpio_get_level(BUTTON_GPIO) == 1 && hold_time < 1000) {
+                            vTaskDelay(pdMS_TO_TICKS(50));
+                            hold_time = (xTaskGetTickCount() * portTICK_PERIOD_MS) - press_start;
+                            elapsed += 50; // Account for the delay in the main timer
+                        }
+                        
+                        if (hold_time < 1000 && gpio_get_level(BUTTON_GPIO) == 0) {
+                            ESP_LOGI(TAG, "🔘 Short press detected (%lu ms) - triggering immediate API check", hold_time);
+                            last_button_state = 0;
+                            break; // Exit wait loop for immediate API check
+                        } else {
+                            ESP_LOGI(TAG, "🔘 Long press detected (%lu ms) - setting flag for main loop", hold_time);
+                            ESP_LOGI(TAG, "🔘 Current state: %d", s_current_state);
+                            g_long_press_in_progress = true;
+                            last_button_state = current;
+                            break; // Exit wait loop immediately to let main loop handle long press
+                        }
+                    } else {
+                        last_button_state = current;
+                    }
                 }
+                
                 vTaskDelay(pdMS_TO_TICKS(BUTTON_POLL_INTERVAL_MS));
                 elapsed += BUTTON_POLL_INTERVAL_MS;
             }
         }
         /* Se force_immediate_check era true, saltiamo completamente il loop */
 
-        force_immediate_check = false;         // consumato il “bonus” immediato
+        force_immediate_check = false;         // consumato il "bonus" immediato
 
         /* -- 3. Controllo delle pratiche ------------------------------------ */
+        // Skip API check if we have a long press to handle
+        if (g_long_press_in_progress) {
+            ESP_LOGI(TAG, "🔘 Skipping API check due to long press in progress");
+            continue; // Go back to main loop start to handle the long press
+        }
+        
         s_current_state = STATE_CHECKING_API;
         display_manager_update(DISPLAY_STATE_CHECKING_API, 0);
         int practices = api_manager_check_practices();
@@ -484,7 +558,27 @@ static void check_ota_updates(void)
               s_current_state = STATE_NO_PRACTICES;
               display_manager_update(DISPLAY_STATE_NO_PRACTICES, 0);
           }
- 
+
+          // Check if we need to force display refresh after OTA check feedback
+          if (force_display_refresh) {
+              force_display_refresh = false;
+              // Re-display current state to override temporary OTA messages
+              switch (s_current_state) {
+                  case STATE_SHOW_PRACTICES:
+                      display_manager_update(DISPLAY_STATE_SHOW_PRACTICES, practices);
+                      break;
+                  case STATE_NO_PRACTICES:
+                      display_manager_update(DISPLAY_STATE_NO_PRACTICES, 0);
+                      break;
+                  case STATE_API_ERROR:
+                      display_manager_update(DISPLAY_STATE_API_ERROR, 0);
+                      break;
+                  default:
+                      // For other states, just continue normal flow
+                      break;
+              }
+          }
+
           // Brief delay to allow time for other tasks (e.g. LVGL) and feed the watchdog
           vTaskDelay(pdMS_TO_TICKS(100));
      }

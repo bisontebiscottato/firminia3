@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.2                          *
+ *                     FIRMINIA 3.5.3                          *
  *  File: test_translations.c                                 *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/

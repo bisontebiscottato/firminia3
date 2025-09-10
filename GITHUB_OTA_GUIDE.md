@@ -11,7 +11,7 @@ This guide explains how to use GitHub Releases for Firminia's Over-The-Air (OTA)
 https://github.com/bisontebiscottato/firminia3/releases/download/{version}/firminia3.bin
 ```
 
-Example: https://github.com/bisontebiscottato/firminia3/releases/download/3.5.2/firminia3.bin
+Example: https://github.com/bisontebiscottato/firminia3/releases/download/3.5.3/firminia3.bin
 
 ### Required Files per Release
 
@@ -67,8 +67,8 @@ openssl dgst -sha256 -sign signing_key.pem \
 #### Via GitHub Web Interface:
 1. Go to https://github.com/bisontebiscottato/firminia3/releases
 2. Click "Create a new release"
-3. Tag version: `3.5.2` (follow semantic versioning)
-4. Release title: `Firminia v3.5.2 - QR Code Improvements`
+3. Tag version: `3.5.3` (follow semantic versioning)
+4. Release title: `Firminia v3.5.3 - QR Code Improvements`
 5. Describe changes in release notes
 6. Upload files:
    - `firminia3.bin`
@@ -78,8 +78,8 @@ openssl dgst -sha256 -sign signing_key.pem \
 #### Via GitHub CLI:
 ```bash
 # Create release with files
-gh release create 3.5.2 \
-    --title "Firminia v3.5.2 - QR Code Improvements" \
+gh release create 3.5.3 \
+    --title "Firminia v3.5.3 - QR Code Improvements" \
     --notes-file CHANGELOG.md \
     release/firminia3.bin \
     release/firminia3.sig
@@ -95,19 +95,19 @@ GET https://api.github.com/repos/bisontebiscottato/firminia3/releases/latest
 ### Response Format
 ```json
 {
-  "tag_name": "3.5.2",
-  "name": "Firminia v3.5.2 - QR Code Improvements",
+  "tag_name": "3.5.3",
+  "name": "Firminia v3.5.3 - QR Code Improvements",
   "published_at": "2025-09-10T10:30:00Z",
   "assets": [
     {
       "name": "firminia3.bin",
       "size": 1887436,
-      "browser_download_url": "https://github.com/bisontebiscottato/firminia3/releases/download/3.5.2/firminia3.bin"
+      "browser_download_url": "https://github.com/bisontebiscottato/firminia3/releases/download/3.5.3/firminia3.bin"
     },
     {
       "name": "firminia3.sig",
       "size": 256,
-      "browser_download_url": "https://github.com/bisontebiscottato/firminia3/releases/download/3.5.2/firminia3.sig"
+      "browser_download_url": "https://github.com/bisontebiscottato/firminia3/releases/download/3.5.3/firminia3.sig"
     }
   ]
 }
@@ -116,9 +116,9 @@ GET https://api.github.com/repos/bisontebiscottato/firminia3/releases/latest
 ## 🔧 Firminia Configuration
 
 ### Version Comparison
-- Current version: `3.5.2`
-- Latest release: `3.5.2`
-- Update available: `strcmp("3.5.2", "3.5.2") < 0` → **true**
+- Current version: `3.5.3`
+- Latest release: `3.5.3`
+- Update available: `strcmp("3.5.3", "3.5.3") < 0` → **true**
 
 ### Update Process
 1. **Check**: GitHub API call every 6 hours
@@ -183,7 +183,7 @@ ESP_LOGI(TAG, "  Duration: %lu ms", update_duration);
 ### 1. Development Testing
 ```bash
 # Create test release
-gh release create 3.5.2-beta \
+gh release create 3.5.3-beta \
     --prerelease \
     --title "Beta Test Release" \
     firminia3.bin
@@ -205,7 +205,7 @@ gh release create 3.5.2-beta \
 ```bash
 # Quick hotfix for critical issues
 idf.py build
-gh release create 3.5.2-hotfix \
+gh release create 3.5.3-hotfix \
     --title "Critical Security Fix" \
     --notes "Fixes critical security vulnerability CVE-2024-XXXX" \
     build/firminia3.bin
@@ -214,7 +214,7 @@ gh release create 3.5.2-hotfix \
 ### Rollback Release
 If a release causes issues:
 1. Create new release with previous working firmware
-2. Increment version number (3.5.3 with 3.5.2 firmware)
+2. Increment version number (3.5.3 with 3.5.3 firmware)
 3. Document rollback in release notes
 
 ## 📞 Support

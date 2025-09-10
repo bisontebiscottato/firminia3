@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.2                          *
+ *                     FIRMINIA 3.5.3                          *
  *  File: display_manager.c                                  *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -566,7 +566,7 @@ static void ble_alternate_timer_cb(lv_timer_t *timer)
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             snprintf(new_text, sizeof(new_text), "%s\n%s\n\nv3.5.2", 
+             snprintf(new_text, sizeof(new_text), "%s\n%s\n\nv3.5.3", 
                      LV_SYMBOL_POWER, get_translated_string(STR_WARMING_UP, current_lang));
              break;
         case DISPLAY_STATE_BLE_ADVERTISING: {
@@ -647,7 +647,13 @@ static void ble_alternate_timer_cb(lv_timer_t *timer)
              break;
          case DISPLAY_STATE_OTA_UPDATE:
             snprintf(new_text, sizeof(new_text), "%s %s\n%s", 
-                    LV_SYMBOL_DOWNLOAD, "Downloading...", "Please wait");
+                    LV_SYMBOL_DOWNLOAD, "\nDownloading...", "Please wait");
+            pending_font = &lv_font_montserrat_18;
+            break;
+            
+        case DISPLAY_STATE_NO_OTA_UPDATE:
+            snprintf(new_text, sizeof(new_text), "%s\n%s", 
+                    LV_SYMBOL_OK, "No firmware\nupdates\navailable");
             pending_font = &lv_font_montserrat_18;
             break;
             
