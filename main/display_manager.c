@@ -647,13 +647,15 @@ static void ble_alternate_timer_cb(lv_timer_t *timer)
              break;
          case DISPLAY_STATE_OTA_UPDATE:
             snprintf(new_text, sizeof(new_text), "%s %s\n%s", 
-                    LV_SYMBOL_DOWNLOAD, "\nDownloading...", "Please wait");
+                    LV_SYMBOL_DOWNLOAD, 
+                    get_translated_string(STR_OTA_DOWNLOADING_DISPLAY, get_current_language()),
+                    get_translated_string(STR_OTA_PLEASE_WAIT, get_current_language()));
             pending_font = &lv_font_montserrat_18;
             break;
             
         case DISPLAY_STATE_NO_OTA_UPDATE:
             snprintf(new_text, sizeof(new_text), "%s\n%s", 
-                    LV_SYMBOL_OK, "No firmware\nupdates\navailable");
+                    LV_SYMBOL_OK, get_translated_string(STR_OTA_NO_UPDATES_AVAILABLE, get_current_language()));
             pending_font = &lv_font_montserrat_18;
             break;
             

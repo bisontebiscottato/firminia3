@@ -24,6 +24,7 @@
 #include "api_manager.h"
 #include "display_manager.h"
 #include "ota_manager.h"
+#include "translations.h"
  
  static const char* TAG = "MainFlow";
  
@@ -137,44 +138,47 @@ static void ota_progress_callback(int percentage, ota_status_t status, ota_error
         ota_display_set = true;
     }
     
+    // Get current language for translations
+    language_t current_lang = get_current_language();
+    
     switch (status) {
         case OTA_STATUS_CHECKING:
-            status_text = "Checking...";
+            status_text = get_translated_string(STR_OTA_CHECKING, current_lang);
             break;
         case OTA_STATUS_DOWNLOADING:
-            status_text = "Downloading...";
+            status_text = get_translated_string(STR_OTA_DOWNLOADING, current_lang);
             break;
         case OTA_STATUS_VERIFYING:
-            status_text = "Verifying...";
+            status_text = get_translated_string(STR_OTA_VERIFYING, current_lang);
             break;
         case OTA_STATUS_INSTALLING:
-            status_text = "Installing...";
+            status_text = get_translated_string(STR_OTA_INSTALLING, current_lang);
             break;
         case OTA_STATUS_SUCCESS:
-            status_text = "Complete!";
+            status_text = get_translated_string(STR_OTA_COMPLETE, current_lang);
             ota_in_progress = false;
             ota_display_set = false; // Reset for next OTA
             break;
         case OTA_STATUS_ERROR:
             switch (error) {
                 case OTA_ERROR_HTTP_FAILED:
-                    status_text = "Network Error";
+                    status_text = get_translated_string(STR_OTA_NETWORK_ERROR, current_lang);
                     break;
                 case OTA_ERROR_DOWNLOAD_FAILED:
-                    status_text = "Download Failed";
+                    status_text = get_translated_string(STR_OTA_DOWNLOAD_FAILED, current_lang);
                     break;
                 case OTA_ERROR_SIGNATURE_INVALID:
-                    status_text = "Invalid Signature";
+                    status_text = get_translated_string(STR_OTA_INVALID_SIGNATURE, current_lang);
                     break;
                 default:
-                    status_text = "Update Error";
+                    status_text = get_translated_string(STR_OTA_UPDATE_ERROR, current_lang);
                     break;
             }
             ota_in_progress = false;
             ota_display_set = false; // Reset for next OTA
             break;
         default:
-            status_text = "Updating...";
+            status_text = get_translated_string(STR_OTA_UPDATING, current_lang);
             break;
     }
     

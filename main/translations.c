@@ -94,6 +94,97 @@ static const char* translations[STR_COUNT][LANGUAGE_COUNT] = {
         "Rilassati.",               // Italian
         "Detendez-vous.",           // French
         "Relajate."                 // Spanish
+    },
+    // STR_OTA_CHECKING
+    {
+        "Checking...",              // English
+        "Controllo...",             // Italian
+        "Verification...",          // French
+        "Verificando..."            // Spanish
+    },
+    // STR_OTA_DOWNLOADING
+    {
+        "Downloading...",           // English
+        "Scaricamento...",          // Italian
+        "Telechargement...",        // French
+        "Descargando..."            // Spanish
+    },
+    // STR_OTA_VERIFYING
+    {
+        "Verifying...",             // English
+        "Verifica...",              // Italian
+        "Verification...",          // French
+        "Verificando..."            // Spanish
+    },
+    // STR_OTA_INSTALLING
+    {
+        "Installing...",            // English
+        "Installazione...",         // Italian
+        "Installation...",          // French
+        "Instalando..."             // Spanish
+    },
+    // STR_OTA_COMPLETE
+    {
+        "Complete!",                // English
+        "Completato!",              // Italian
+        "Termine!",                 // French
+        "Completado!"               // Spanish
+    },
+    // STR_OTA_UPDATING
+    {
+        "Updating...",              // English
+        "Aggiornamento...",         // Italian
+        "Mise a jour...",           // French
+        "Actualizando..."           // Spanish
+    },
+    // STR_OTA_NETWORK_ERROR
+    {
+        "Network Error",            // English
+        "Errore di Rete",           // Italian
+        "Erreur Reseau",            // French
+        "Error de Red"              // Spanish
+    },
+    // STR_OTA_DOWNLOAD_FAILED
+    {
+        "Download Failed",          // English
+        "Download Fallito",         // Italian
+        "Echec Telechargement",     // French
+        "Descarga Fallida"          // Spanish
+    },
+    // STR_OTA_INVALID_SIGNATURE
+    {
+        "Invalid Signature",        // English
+        "Firma Non Valida",         // Italian
+        "Signature Invalide",       // French
+        "Firma Invalida"            // Spanish
+    },
+    // STR_OTA_UPDATE_ERROR
+    {
+        "Update Error",             // English
+        "Errore Aggiornamento",     // Italian
+        "Erreur Mise a Jour",       // French
+        "Error Actualizacion"       // Spanish
+    },
+    // STR_OTA_DOWNLOADING_DISPLAY
+    {
+        "Downloading...",           // English
+        "Scaricamento...",          // Italian
+        "Telechargement...",        // French
+        "Descargando..."            // Spanish
+    },
+    // STR_OTA_PLEASE_WAIT
+    {
+        "Please wait",              // English
+        "Attendere prego",          // Italian
+        "Veuillez patienter",       // French
+        "Por favor espere"          // Spanish
+    },
+    // STR_OTA_NO_UPDATES_AVAILABLE
+    {
+        "No firmware\nupdates\navailable",     // English
+        "Nessun\naggiornamento\ndisponibile",  // Italian
+        "Aucune\nmise a jour\ndisponible",     // French
+        "No hay\nactualizaciones\ndisponibles" // Spanish
     }
 };
 
