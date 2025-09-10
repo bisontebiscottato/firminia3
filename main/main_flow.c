@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.1                        *
+ *                     FIRMINIA 3.5.2                        *
  *  File: main_flow.c                                        *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  *                                                            *
@@ -18,11 +18,12 @@
  #include "freertos/task.h"
  #include "driver/gpio.h"
  
- #include "device_config.h"   // For loading and saving NVS configuration
- #include "ble_manager.h"
- #include "wifi_manager.h"
- #include "api_manager.h"
- #include "display_manager.h"
+#include "device_config.h"   // For loading and saving NVS configuration
+#include "ble_manager.h"
+#include "wifi_manager.h"
+#include "api_manager.h"
+#include "display_manager.h"
+#include "ota_manager.h"
  
  static const char* TAG = "MainFlow";
  
@@ -32,9 +33,16 @@
 #define BLE_WAIT_DURATION_MS           120000   // Maximum waiting time for BLE configuration
 #define DEFAULT_API_CHECK_INTERVAL_MS  60000UL // Waiting time between one API check and the next
 #define BUTTON_POLL_INTERVAL_MS        200     // Polling interval of the button in the waiting loop
-#define RESET_BUTTON_HOLD_TIME_MS      5000    // Time to hold button for configuration reset
+#define OTA_BUTTON_HOLD_TIME_MS        5000    // Time to hold button for OTA update
+#define RESET_BUTTON_HOLD_TIME_MS      10000   // Time to hold button for configuration reset
+#define OTA_CHECK_INTERVAL_MS          3600000UL // OTA check every hour (for testing, normally 6 hours)
 
  bool force_immediate_check = false;   // se true, salta il periodo di attesa
+
+// OTA variables
+static uint32_t last_ota_check = 0;
+static bool ota_in_progress = false;
+#define CURRENT_FIRMWARE_VERSION "3.5.2"
 
  typedef enum {
     STATE_WARMING_UP,
@@ -92,6 +100,7 @@ static bool immediate_check_triggered(int *last_state)
     return triggered;
 }
 
+
 // Function to check if button is held for reset duration
 // Returns true if button was held for RESET_BUTTON_HOLD_TIME_MS
 static bool check_button_held_for_reset(void)
@@ -121,6 +130,111 @@ static bool check_button_held_for_reset(void)
         ESP_LOGI(TAG, "🔘 Button released after %lu ms - Reset cancelled", hold_time);
         return false;
     }
+}
+
+// OTA progress callback
+static void ota_progress_callback(int percentage, ota_status_t status, ota_error_t error)
+{
+    const char* status_text = "";
+    
+    // Set display to OTA mode on first call
+    static bool ota_display_set = false;
+    if (!ota_display_set) {
+        display_manager_update(DISPLAY_STATE_OTA_UPDATE, 0);
+        ota_display_set = true;
+    }
+    
+    switch (status) {
+        case OTA_STATUS_CHECKING:
+            status_text = "Checking...";
+            break;
+        case OTA_STATUS_DOWNLOADING:
+            status_text = "Downloading...";
+            break;
+        case OTA_STATUS_VERIFYING:
+            status_text = "Verifying...";
+            break;
+        case OTA_STATUS_INSTALLING:
+            status_text = "Installing...";
+            break;
+        case OTA_STATUS_SUCCESS:
+            status_text = "Complete!";
+            ota_in_progress = false;
+            ota_display_set = false; // Reset for next OTA
+            break;
+        case OTA_STATUS_ERROR:
+            switch (error) {
+                case OTA_ERROR_HTTP_FAILED:
+                    status_text = "Network Error";
+                    break;
+                case OTA_ERROR_DOWNLOAD_FAILED:
+                    status_text = "Download Failed";
+                    break;
+                case OTA_ERROR_SIGNATURE_INVALID:
+                    status_text = "Invalid Signature";
+                    break;
+                default:
+                    status_text = "Update Error";
+                    break;
+            }
+            ota_in_progress = false;
+            ota_display_set = false; // Reset for next OTA
+            break;
+        default:
+            status_text = "Updating...";
+            break;
+    }
+    
+    ESP_LOGI(TAG, "🔄 OTA Progress: %d%% - %s", percentage, status_text);
+    display_manager_show_ota_progress(percentage, status_text);
+    
+    // Handle completion or error
+    if (status == OTA_STATUS_SUCCESS) {
+        ESP_LOGI(TAG, "✅ OTA update completed successfully! Restarting in 3 seconds...");
+        vTaskDelay(pdMS_TO_TICKS(3000));
+        esp_restart();
+    } else if (status == OTA_STATUS_ERROR) {
+        ESP_LOGE(TAG, "❌ OTA update failed with error: %d", error);
+        // Resume normal operation after 5 seconds
+        vTaskDelay(pdMS_TO_TICKS(5000));
+    }
+}
+
+// Check for OTA updates
+static void check_ota_updates(void)
+{
+    if (ota_in_progress) {
+        ESP_LOGI(TAG, "⏳ OTA already in progress, skipping check");
+        return;
+    }
+    
+    ESP_LOGI(TAG, "🔍 Checking for firmware updates...");
+    
+    ota_version_info_t update_info;
+    esp_err_t err = api_manager_check_firmware_updates(CURRENT_FIRMWARE_VERSION, &update_info);
+    
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "🚀 Update available: %s → %s", CURRENT_FIRMWARE_VERSION, update_info.version);
+        
+        // Set OTA in progress flag
+        ota_in_progress = true;
+        
+        // Show OTA state on display
+        display_manager_update(DISPLAY_STATE_OTA_UPDATE, 0);
+        
+        // Start OTA update
+        err = ota_start_update(&update_info);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "❌ Failed to start OTA update: %s", esp_err_to_name(err));
+            ota_in_progress = false;
+        }
+    } else if (err == ESP_ERR_NOT_FOUND) {
+        ESP_LOGI(TAG, "ℹ️ No firmware updates available");
+    } else {
+        ESP_LOGE(TAG, "❌ Failed to check for updates: %s", esp_err_to_name(err));
+    }
+    
+    last_ota_check = xTaskGetTickCount() * portTICK_PERIOD_MS;
 }
  
  static void main_flow_task(void* pvParameters)
@@ -262,12 +376,51 @@ static bool check_button_held_for_reset(void)
  
     while (1) {
 
-        /* -- 0. Check for configuration reset (except during WARMING_UP) --- */
-        if (s_current_state != STATE_WARMING_UP && check_button_held_for_reset()) {
-            ESP_LOGW(TAG, "🔄 Configuration reset requested - resetting to defaults and restarting...");
-            reset_config_to_default();
-            vTaskDelay(pdMS_TO_TICKS(1000)); // Give time for user to see the message
-            esp_restart();
+        /* -- 0. Check for button actions (OTA: 5s, Reset: 10s) --- */
+        if (s_current_state != STATE_WARMING_UP && gpio_get_level(BUTTON_GPIO) == 1) {
+            uint32_t hold_start = xTaskGetTickCount() * portTICK_PERIOD_MS;
+            uint32_t hold_time = 0;
+            bool ota_triggered = false;
+            
+            ESP_LOGI(TAG, "🔘 Button pressed - monitoring hold duration...");
+            
+            // Monitor button hold duration
+            while (gpio_get_level(BUTTON_GPIO) == 1) {
+                vTaskDelay(pdMS_TO_TICKS(BUTTON_POLL_INTERVAL_MS));
+                hold_time = (xTaskGetTickCount() * portTICK_PERIOD_MS) - hold_start;
+                
+                // Log progress every second
+                if (hold_time % 1000 == 0 && hold_time > 0) {
+                    ESP_LOGI(TAG, "🔘 Button held for %lu ms...", hold_time);
+                }
+                
+                // Trigger OTA at 5 seconds (only once)
+                if (!ota_triggered && hold_time >= OTA_BUTTON_HOLD_TIME_MS && 
+                    !ota_in_progress && wifi_manager_is_connected()) {
+                    ESP_LOGI(TAG, "🚀 OTA update triggered after %lu ms!", hold_time);
+                    ota_triggered = true;
+                    check_ota_updates();
+                }
+                
+                // Trigger reset at 10 seconds
+                if (hold_time >= RESET_BUTTON_HOLD_TIME_MS) {
+                    ESP_LOGW(TAG, "🔄 Configuration reset triggered after %lu ms!", hold_time);
+                    reset_config_to_default();
+                    vTaskDelay(pdMS_TO_TICKS(1000));
+                    esp_restart();
+                }
+            }
+            
+            ESP_LOGI(TAG, "🔘 Button released after %lu ms", hold_time);
+        }
+        
+        /* -- 0.5. Check for OTA updates (periodically, when WiFi connected) --- */
+        if (!ota_in_progress && wifi_manager_is_connected()) {
+            uint32_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+            if (current_time - last_ota_check > OTA_CHECK_INTERVAL_MS) {
+                ESP_LOGI(TAG, "⏰ Periodic OTA check triggered");
+                check_ota_updates();
+            }
         }
 
         /* -- 1. Gestione Wi-Fi ---------------------------------------------- */
@@ -359,10 +512,20 @@ static bool check_button_held_for_reset(void)
      };
      gpio_config(&btn_config);
  
-     ble_manager_init();
-     wifi_manager_init();
-     display_manager_init();
- 
-     xTaskCreate(main_flow_task, "main_flow_task", 8192, NULL, 5, NULL);
+    ble_manager_init();
+    wifi_manager_init();
+    display_manager_init();
+    
+    // Initialize OTA manager
+    esp_err_t ota_err = ota_manager_init(ota_progress_callback);
+    if (ota_err == ESP_OK) {
+        // Mark current firmware as valid (in case we just updated)
+        ota_mark_firmware_valid();
+        ESP_LOGI(TAG, "✅ OTA Manager initialized successfully");
+    } else {
+        ESP_LOGE(TAG, "❌ Failed to initialize OTA Manager: %s", esp_err_to_name(ota_err));
+    }
+
+    xTaskCreate(main_flow_task, "main_flow_task", 8192, NULL, 5, NULL);
  }
  

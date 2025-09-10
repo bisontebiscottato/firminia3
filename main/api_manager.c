@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.1                          *
+ *                     FIRMINIA 3.5.2                          *
  *  File: api_manager.c                                      *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -23,8 +23,10 @@
  #endif
  #include "esp_crt_bundle.h"
  #include "mbedtls/x509_crt.h"
- #include "cJSON.h"
- #include "device_config.h"  // Contiene web_server, web_port, web_url, api_token, askmesign_user
+#include "cJSON.h"
+#include "esp_http_client.h"
+#include "device_config.h"  // Contiene web_server, web_port, web_url, api_token, askmesign_user
+#include "ota_manager.h"    // Per ota_version_info_t
  
  static const char *TAG = "API_Manager";
  #define BUFFER_SIZE 8000
@@ -212,10 +214,166 @@
      mbedtls_ssl_config_free(&conf);
      mbedtls_ctr_drbg_free(&ctr_drbg);
      mbedtls_entropy_free(&entropy);
-     mbedtls_x509_crt_free(&cacert);
-     if (buffer) {
-         free(buffer);
-     }
-     return practices_found;
- }
+    mbedtls_x509_crt_free(&cacert);
+    if (buffer) {
+        free(buffer);
+    }
+    return practices_found;
+}
+
+esp_err_t api_manager_check_firmware_updates(const char* current_version, ota_version_info_t* update_info)
+{
+    if (current_version == NULL || update_info == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    ESP_LOGI(TAG, "🔍 Checking for firmware updates via GitHub API (current: %s)...", current_version);
+    
+    // Use GitHub API to check for latest release
+    char update_url[512];
+    snprintf(update_url, sizeof(update_url), 
+             "https://api.github.com/repos/bisontebiscottato/firminia3/releases/latest");
+    
+    ESP_LOGI(TAG, "📡 GitHub API URL: %s", update_url);
+    
+    // HTTP client configuration for GitHub API
+    esp_http_client_config_t config = {
+        .url = update_url,
+        .method = HTTP_METHOD_GET,
+        .timeout_ms = 15000,
+        .buffer_size = 4096,  // GitHub API responses can be larger
+        .buffer_size_tx = 1024,
+        .crt_bundle_attach = esp_crt_bundle_attach,  // Enable certificate verification
+        .skip_cert_common_name_check = false,
+    };
+    
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    if (client == NULL) {
+        ESP_LOGE(TAG, "❌ Failed to initialize HTTP client for GitHub API");
+        return ESP_ERR_NO_MEM;
+    }
+    
+    // GitHub API headers (no auth needed for public repos)
+    esp_http_client_set_header(client, "User-Agent", "Firminia/3.5.2");
+    esp_http_client_set_header(client, "Accept", "application/vnd.github.v3+json");
+    
+    // Allocate response buffer (larger for GitHub API)
+    char* buffer = malloc(4096);
+    if (buffer == NULL) {
+        esp_http_client_cleanup(client);
+        ESP_LOGE(TAG, "❌ Failed to allocate response buffer");
+        return ESP_ERR_NO_MEM;
+    }
+    
+    esp_err_t err = esp_http_client_open(client, 0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "❌ Failed to open HTTP connection: %s", esp_err_to_name(err));
+        free(buffer);
+        esp_http_client_cleanup(client);
+        return err;
+    }
+    
+    int content_length = esp_http_client_fetch_headers(client);
+    int status_code = esp_http_client_get_status_code(client);
+    
+    ESP_LOGI(TAG, "📡 Update check response: status=%d, content_length=%d", status_code, content_length);
+    
+    if (status_code == 200 && content_length > 0 && content_length < 4096) {
+        int data_read = esp_http_client_read_response(client, buffer, content_length);
+        if (data_read > 0) {
+            buffer[data_read] = '\0';
+            ESP_LOGI(TAG, "📡 GitHub API response received (%d bytes)", data_read);
+            
+            // Parse GitHub API JSON response
+            cJSON *json = cJSON_Parse(buffer);
+            if (json) {
+                cJSON *tag_name = cJSON_GetObjectItem(json, "tag_name");
+                cJSON *assets = cJSON_GetObjectItem(json, "assets");
+                
+                if (cJSON_IsString(tag_name) && cJSON_IsArray(assets)) {
+                    const char* latest_version = cJSON_GetStringValue(tag_name);
+                    ESP_LOGI(TAG, "📋 Latest GitHub release: %s", latest_version);
+                    
+                    // Simple version comparison (remove 'v' prefix if present)
+                    const char* clean_latest = (latest_version[0] == 'v') ? latest_version + 1 : latest_version;
+                    const char* clean_current = (current_version[0] == 'v') ? current_version + 1 : current_version;
+                    
+                    if (strcmp(clean_current, clean_latest) < 0) {
+                        // Find firmware binary in assets
+                        cJSON *asset;
+                        cJSON_ArrayForEach(asset, assets) {
+                            cJSON *name = cJSON_GetObjectItem(asset, "name");
+                            cJSON *download_url = cJSON_GetObjectItem(asset, "browser_download_url");
+                            cJSON *size = cJSON_GetObjectItem(asset, "size");
+                            
+                            if (cJSON_IsString(name) && cJSON_IsString(download_url) && cJSON_IsNumber(size)) {
+                                const char* asset_name = cJSON_GetStringValue(name);
+                                
+                                // Look for firmware binary
+                                if (strstr(asset_name, "firminia3.bin") != NULL) {
+                                    // Fill update info structure
+                                    const char* download_url_str = cJSON_GetStringValue(download_url);
+                                    ESP_LOGI(TAG, "🔗 Found firmware URL: %s", download_url_str);
+                                    
+                                    strncpy(update_info->version, clean_latest, sizeof(update_info->version) - 1);
+                                    update_info->version[sizeof(update_info->version) - 1] = '\0';
+                                    
+                                    strncpy(update_info->url, download_url_str, sizeof(update_info->url) - 1);
+                                    update_info->url[sizeof(update_info->url) - 1] = '\0';
+                                    
+                                    // Generate signature URL (assuming .sig file exists)
+                                    snprintf(update_info->signature_url, sizeof(update_info->signature_url),
+                                            "https://github.com/bisontebiscottato/firminia3/releases/download/%s/firminia3.sig",
+                                            latest_version);
+                                    
+                                    update_info->size = (uint32_t)cJSON_GetNumberValue(size);
+                                    
+                                    // For now, leave checksum empty (could be added to GitHub release notes)
+                                    strcpy(update_info->checksum, "");
+                                    
+                                    ESP_LOGI(TAG, "✅ Update available: %s → %s (size: %lu bytes)", 
+                                             current_version, update_info->version, update_info->size);
+                                    
+                                    err = ESP_OK;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (err != ESP_OK) {
+                            ESP_LOGE(TAG, "❌ firminia3.bin not found in release assets");
+                            err = ESP_ERR_NOT_FOUND;
+                        }
+                    } else {
+                        ESP_LOGI(TAG, "ℹ️ No newer version available (%s >= %s)", clean_current, clean_latest);
+                        err = ESP_ERR_NOT_FOUND;
+                    }
+                } else {
+                    ESP_LOGE(TAG, "❌ Invalid GitHub API response format");
+                    err = ESP_ERR_INVALID_RESPONSE;
+                }
+                
+                if (json) cJSON_Delete(json);
+            } else {
+                ESP_LOGE(TAG, "❌ Failed to parse GitHub API JSON response");
+                err = ESP_ERR_INVALID_RESPONSE;
+            }
+        } else {
+            ESP_LOGE(TAG, "❌ Failed to read update response");
+            err = ESP_ERR_HTTP_INVALID_TRANSPORT;
+        }
+    } else if (status_code == 404) {
+        ESP_LOGI(TAG, "ℹ️ No updates available (404)");
+        err = ESP_ERR_NOT_FOUND;
+    } else {
+        ESP_LOGE(TAG, "❌ Update check failed: HTTP %d", status_code);
+        err = ESP_ERR_HTTP_BASE + status_code;
+    }
+    
+    esp_http_client_close(client);
+    esp_http_client_cleanup(client);
+    free(buffer);
+    
+    return err;
+}
  

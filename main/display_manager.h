@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.1                          *
+ *                     FIRMINIA 3.5.2                          *
  *  File: display_manager.h                                  *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -22,11 +22,13 @@ typedef enum {
     DISPLAY_STATE_SHOW_PRACTICES,
     DISPLAY_STATE_NO_PRACTICES,
     DISPLAY_STATE_NO_WIFI_SLEEPING,
-    DISPLAY_STATE_API_ERROR    
+    DISPLAY_STATE_API_ERROR,
+    DISPLAY_STATE_OTA_UPDATE    
 } display_state_t;
 
 void display_manager_init(void);
 void display_manager_update(display_state_t state, int practices_count);
+void display_manager_show_ota_progress(int percentage, const char* status_text);
 
 #ifdef __cplusplus
 }

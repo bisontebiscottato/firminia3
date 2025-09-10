@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.1                          *
+ *                     FIRMINIA 3.5.2                          *
  *  File: display_manager.c                                  *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -71,9 +71,12 @@
  static const lv_font_t *pending_font = &lv_font_montserrat_28;  // font di default
 
  // Mutex to protect LVGL calls
- static _lock_t lvgl_api_lock;
- 
- // Global pointer to the LVGL label for displaying state text
+static _lock_t lvgl_api_lock;
+
+// OTA flag to suspend LVGL during updates
+static bool ota_suspend_lvgl = false;
+
+// Global pointer to the LVGL label for displaying state text
  static lv_obj_t *state_label = NULL;
 
 // Global pointer to the LVGL label for displaying MAC address
@@ -263,20 +266,27 @@ static void fade_out_anim_ready_cb(lv_anim_t *a)
  //------------------------------------------------------------------------------
  // lvgl_port_task
  //------------------------------------------------------------------------------
- static void lvgl_port_task(void *arg)
- {
-     ESP_LOGI(TAG, "Starting LVGL task");
-     while (1) {
-         _lock_acquire(&lvgl_api_lock);
-         uint32_t time_till_next_ms = lv_timer_handler();
-         _lock_release(&lvgl_api_lock);
- 
-         if (time_till_next_ms < LVGL_TASK_MIN_DELAY_MS) {
-             time_till_next_ms = LVGL_TASK_MIN_DELAY_MS;
-         }
-         vTaskDelay(pdMS_TO_TICKS(time_till_next_ms));
-     }
- }
+static void lvgl_port_task(void *arg)
+{
+    ESP_LOGI(TAG, "Starting LVGL task");
+    while (1) {
+        // Suspend LVGL processing during OTA to avoid SPI conflicts
+        if (ota_suspend_lvgl) {
+            ESP_LOGD(TAG, "LVGL suspended during OTA");
+            vTaskDelay(pdMS_TO_TICKS(1000)); // Sleep longer during OTA
+            continue;
+        }
+        
+        _lock_acquire(&lvgl_api_lock);
+        uint32_t time_till_next_ms = lv_timer_handler();
+        _lock_release(&lvgl_api_lock);
+
+        if (time_till_next_ms < LVGL_TASK_MIN_DELAY_MS) {
+            time_till_next_ms = LVGL_TASK_MIN_DELAY_MS;
+        }
+        vTaskDelay(pdMS_TO_TICKS(time_till_next_ms));
+    }
+}
  
  //------------------------------------------------------------------------------
  // arc_anim_cb - Ruota l'arco
@@ -556,7 +566,7 @@ static void ble_alternate_timer_cb(lv_timer_t *timer)
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             snprintf(new_text, sizeof(new_text), "%s\n%s\n\nv3.5.1", 
+             snprintf(new_text, sizeof(new_text), "%s\n%s\n\nv3.5.2", 
                      LV_SYMBOL_POWER, get_translated_string(STR_WARMING_UP, current_lang));
              break;
         case DISPLAY_STATE_BLE_ADVERTISING: {
@@ -635,7 +645,13 @@ static void ble_alternate_timer_cb(lv_timer_t *timer)
              snprintf(new_text, sizeof(new_text), "%s\n%s", 
                      LV_SYMBOL_WARNING, get_translated_string(STR_API_ERROR, current_lang));
              break;
-         default:
+         case DISPLAY_STATE_OTA_UPDATE:
+            snprintf(new_text, sizeof(new_text), "%s %s\n%s", 
+                    LV_SYMBOL_DOWNLOAD, "Downloading...", "Please wait");
+            pending_font = &lv_font_montserrat_18;
+            break;
+            
+        default:
              snprintf(new_text, sizeof(new_text), "%s\n%s", 
                      LV_SYMBOL_BACKSPACE, get_translated_string(STR_UNKNOWN_STATE, current_lang));
              break;
@@ -782,5 +798,66 @@ static void ble_alternate_timer_cb(lv_timer_t *timer)
 
      // Release the lock
      _lock_release(&lvgl_api_lock);
- }
+}
+
+void display_manager_show_ota_progress(int percentage, const char* status_text)
+{
+    // Only update display once at the beginning of OTA to avoid SPI conflicts
+    static bool ota_display_initialized = false;
+    
+    if (!ota_display_initialized) {
+        ESP_LOGI(TAG, "🔄 Initializing OTA display mode");
+        
+        // Suspend LVGL task to prevent SPI conflicts
+        ota_suspend_lvgl = true;
+        ESP_LOGI(TAG, "🛑 LVGL task suspended for OTA");
+        
+        // Give LVGL task time to suspend
+        vTaskDelay(pdMS_TO_TICKS(100));
+        
+        _lock_acquire(&lvgl_api_lock);
+        
+        // OTA display is already set by display_manager_update() with proper animation
+        // Just ensure text is fully opaque
+        if (state_label) {
+            lv_obj_set_style_opa(state_label, LV_OPA_COVER, 0);
+            lv_obj_set_style_text_align(state_label, LV_TEXT_ALIGN_CENTER, 0);
+        }
+        
+        // Hide all dynamic elements
+        if (state_arc) {
+            lv_obj_add_flag(state_arc, LV_OBJ_FLAG_HIDDEN);
+        }
+        
+        if (qr_image) {
+            lv_obj_add_flag(qr_image, LV_OBJ_FLAG_HIDDEN);
+        }
+        
+        if (ble_alternate_timer) {
+            lv_timer_del(ble_alternate_timer);
+            ble_alternate_timer = NULL;
+        }
+        
+        // Force one final flush then suspend all display updates
+        lv_refr_now(NULL);
+        
+        _lock_release(&lvgl_api_lock);
+        ota_display_initialized = true;
+        ESP_LOGI(TAG, "✅ OTA display initialized - LVGL suspended");
+    }
+    
+    // Only log progress, absolutely NO display updates during OTA
+    ESP_LOGI(TAG, "🔄 OTA Progress: %d%% - %s", percentage, status_text ? status_text : "");
+    
+    // Reset flag when OTA completes (success or error) 
+    if (percentage >= 100 || (status_text && (strstr(status_text, "Error") || strstr(status_text, "Complete")))) {
+        ota_display_initialized = false;
+        ota_suspend_lvgl = false; // Resume LVGL task
+        ESP_LOGI(TAG, "🏁 OTA completed, LVGL task resumed, display flag reset");
+    }
+    
+    // Exit immediately after logging - NO display operations
+    return;
+
+}
  

@@ -1,6 +1,96 @@
 # Changelog - Firminia V3
 
-## Versione 3.5.1 - Miglioramenti QR Code
+## Versione 3.5.2 - Sistema OTA Sicuro
+
+### 🚀 Nuove Funzionalità
+
+#### Sistema OTA (Over-The-Air Updates)
+- **Aggiornamenti automatici** tramite GitHub Releases API
+- **Download sicuro HTTPS** con verifica certificati SSL/TLS
+- **Dual-boot partitions** per rollback automatico in caso di errori
+- **Controllo manuale** tramite pressione prolungata del tasto (5 secondi)
+- **Controllo periodico** automatico ogni ora quando connesso al WiFi
+- **Display dedicato** con sospensione LVGL per evitare conflitti SPI
+- **Progress tracking** dettagliato nei log ESP per monitoraggio
+
+#### Controlli Bottone Migliorati
+- **5 secondi**: Avvia aggiornamento OTA (se WiFi connesso)
+- **10 secondi**: Reset configurazione a default (come prima)
+- **Pressione breve**: Controllo pratiche immediato (come prima)
+- **Eliminato doppio click** per evitare conflitti con controllo pratiche
+
+#### Gestione Display OTA
+- **Sospensione LVGL** durante download per eliminare conflitti SPI
+- **Display statico** con messaggio "Downloading... Please wait"
+- **Simbolo LVGL** standard (`LV_SYMBOL_DOWNLOAD`) per coerenza UI
+- **Riattivazione automatica** al completamento dell'aggiornamento
+
+### 🔧 Modifiche Tecniche
+
+#### Partizioni Flash
+- **Partizione factory rimossa** per ottimizzare spazio
+- **ota_0 e ota_1** da 1920KB ciascuna per firmware da 1.8MB
+- **ota_data** per gestione dual-boot
+
+#### Configurazione OTA
+- **Timeout HTTP aumentato** a 120 secondi per download grandi
+- **Buffer ottimizzati** (8KB RX, 2KB TX) per performance migliori
+- **Retry logic** e rilevamento stalli per affidabilità
+- **Verifica firma** preparata (attualmente disabilitata per testing)
+
+#### API GitHub Integration
+- **GitHub Releases API** per controllo automatico versioni
+- **JSON parsing** robusto con gestione errori
+- **URL validation** e costruzione automatica URL firma
+- **User-Agent** personalizzato per identificazione
+
+### 🛡️ Sicurezza
+
+#### SSL/TLS
+- **esp_crt_bundle_attach** per verifica certificati
+- **Validazione hostname** abilitata
+- **Connessioni sicure** per API GitHub e download firmware
+
+#### Gestione Errori
+- **Rollback automatico** in caso di firmware corrotto
+- **Validazione firmware** prima dell'installazione
+- **Cleanup automatico** risorse in caso di errori
+- **Logging dettagliato** per troubleshooting
+
+### 📊 Performance
+
+#### Ottimizzazioni Display
+- **Eliminazione conflitti SPI** tramite sospensione LVGL
+- **Riduzione aggiornamenti** durante OTA (da 100ms a 50ms)
+- **Throttling intelligente** per progress updates
+- **Memory management** migliorato
+
+#### Network
+- **Keep-alive HTTP** per connessioni efficienti
+- **Buffer sizing** ottimizzato per firmware grandi
+- **Timeout management** adattivo
+- **Retry strategy** per connessioni instabili
+
+### 🐛 Correzioni
+
+#### Display
+- **Risolto "Unknown state E-003"** aggiungendo `DISPLAY_STATE_OTA_UPDATE`
+- **Corretto testo sbiadito** durante inizializzazione OTA
+- **Eliminati conflitti SPI** tra display e download HTTP
+
+#### Memory Management
+- **Risolto double-free** nella pulizia JSON
+- **Corretta gestione handle** OTA (`esp_https_ota_handle_t`)
+- **String null-termination** forzata per URL
+
+#### API
+- **Corretti tipi handle** per compatibilità ESP-IDF v5.5
+- **Aggiornate API calls** per HTTPS OTA
+- **Risolti warning compilazione** per funzioni deprecated
+
+---
+
+## Versione 3.5.1 - Miglioramenti QR Code (Precedente)
 
 ### 📱 Interfaccia Utente
 
