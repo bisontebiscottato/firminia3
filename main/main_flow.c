@@ -719,6 +719,9 @@ static void check_ota_updates(void)
         // Set OTA in progress flag
         ota_in_progress = true;
         
+        // Disable BLE timer during OTA to prevent crashes
+        display_manager_disable_ble_timer();
+        
         // Show OTA state on display
         display_manager_update(DISPLAY_STATE_OTA_UPDATE, 0);
         

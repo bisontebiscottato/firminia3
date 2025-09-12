@@ -30,6 +30,7 @@ typedef enum {
 void display_manager_init(void);
 void display_manager_update(display_state_t state, int practices_count);
 void display_manager_show_ota_progress(int percentage, const char* status_text);
+void display_manager_disable_ble_timer(void);
 
 #ifdef __cplusplus
 }

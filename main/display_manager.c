@@ -306,6 +306,13 @@ static void ble_alternate_timer_cb(lv_timer_t *timer)
 {
     ESP_LOGI(TAG, "🔄 BLE timer callback triggered, switching to %s", ble_show_text ? "QR" : "text");
     
+    // Safety check: Don't run during OTA or when LVGL is suspended
+    extern bool ota_in_progress;
+    if (ota_in_progress) {
+        ESP_LOGW(TAG, "⚠️ BLE timer callback skipped - OTA in progress");
+        return;
+    }
+    
     // Note: Timer callbacks are already executed in LVGL context, no need for lock
     
     // Toggle between text and QR code
@@ -362,8 +369,15 @@ static void ble_alternate_timer_cb(lv_timer_t *timer)
                 lv_obj_set_style_transform_pivot_x(qr_image, 50, LV_PART_MAIN);  // 50% = center
                 lv_obj_set_style_transform_pivot_y(qr_image, 50, LV_PART_MAIN);  // 50% = center
                 
-                // Scale QR code by 25% using transform
-                lv_obj_set_style_transform_scale(qr_image, 256 * 125 / 100, 0);  // 125% scale (256 = 100%)
+                // Scale QR code by 25% using transform (safety check for division by zero)
+                int32_t scale_value = 256 * 125;
+                if (scale_value > 0) {
+                    scale_value = scale_value / 100;  // 125% scale (256 = 100%)
+                    lv_obj_set_style_transform_scale(qr_image, scale_value, 0);
+                } else {
+                    ESP_LOGW(TAG, "⚠️ Invalid scale value, using default");
+                    lv_obj_set_style_transform_scale(qr_image, 256, 0);  // 100% scale
+                }
                 
                 lv_obj_align(qr_image, LV_ALIGN_CENTER, 0, 0);
                 ESP_LOGI(TAG, "✅ QR image created successfully with 25%% scaling (centered)");
@@ -415,6 +429,21 @@ static void ble_alternate_timer_cb(lv_timer_t *timer)
     }
     
     ESP_LOGI(TAG, "🔄 BLE timer callback completed");
+}
+
+//------------------------------------------------------------------------------
+// display_manager_disable_ble_timer - Disabilita il timer BLE durante OTA
+//------------------------------------------------------------------------------
+void display_manager_disable_ble_timer(void)
+{
+    if (ble_alternate_timer != NULL) {
+        ESP_LOGW(TAG, "🛑 Disabling BLE timer during OTA to prevent crashes");
+        lv_timer_del(ble_alternate_timer);
+        ble_alternate_timer = NULL;
+        ESP_LOGI(TAG, "✅ BLE timer disabled successfully");
+    } else {
+        ESP_LOGI(TAG, "ℹ️ BLE timer was already disabled");
+    }
 }
  
  //------------------------------------------------------------------------------
@@ -566,7 +595,7 @@ static void ble_alternate_timer_cb(lv_timer_t *timer)
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             snprintf(new_text, sizeof(new_text), "%s\n%s\n\n3.5.4-OTA", 
+             snprintf(new_text, sizeof(new_text), "%s\n%s\n\n3.5.4", 
                      LV_SYMBOL_POWER, get_translated_string(STR_WARMING_UP, current_lang));
              break;
         case DISPLAY_STATE_BLE_ADVERTISING: {
