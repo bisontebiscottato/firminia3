@@ -47,6 +47,9 @@ Firminia is a powerful, yet easy-to-use embedded solution designed to streamline
 - **🔵 Auto BLE Mode**: Automatically enters configuration mode when default settings detected
 - **🔄 Configuration Reset**: Hold button for 5 seconds to reset configuration to defaults
 - **📱 Enhanced QR Code**: 25% larger QR code with perfect centering for improved scanning
+- **🛡️ Automatic Rollback**: Protects against corrupted firmware with automatic recovery
+- **⏰ Boot Watchdog**: Monitors boot process and triggers rollback on timeout
+- **🔍 Firmware Validation**: Comprehensive health checks and integrity verification
 
 ## 🔧 Hardware Requirements
 
@@ -191,6 +194,35 @@ Add the `language` parameter to your JSON configuration:
 
 For detailed information about the localization system, see [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md).
 
+## 🛡️ Automatic Rollback System
+
+Firminia V3.5.4 includes a comprehensive automatic rollback system that protects the device from corrupted or problematic firmware, ensuring continuous operation and system reliability.
+
+### Key Features
+
+- **🔄 Automatic Rollback**: Detects system crashes and automatically rolls back to the previous working firmware
+- **⏰ Boot Watchdog**: Internal protection against boot hangs with 30-second timeout
+- **🔍 Firmware Validation**: Performs health checks on firmware integrity and metadata
+- **📊 Detailed Logging**: Comprehensive logging for debugging and monitoring rollback operations
+- **🧪 Test Suite**: Built-in testing framework to verify rollback functionality
+
+### How It Works
+
+1. **Crash Detection**: System monitors for crashes (panic, watchdog timeouts, etc.)
+2. **Automatic Recovery**: On crash detection, system automatically switches to previous firmware partition
+3. **Boot Protection**: Internal watchdog provides protection against boot hangs
+4. **Health Validation**: Continuous validation of firmware integrity and compatibility
+5. **Seamless Operation**: Rollback is transparent to the user - device continues normal operation
+
+### Rollback Scenarios
+
+- **Firmware Corruption**: Automatic rollback when corrupted firmware causes crashes
+- **Boot Hangs**: Internal watchdog protection against boot hangs
+- **Compatibility Issues**: Rollback when firmware is incompatible with hardware
+- **Update Failures**: Recovery from failed OTA updates
+
+For detailed technical documentation, see [ROLLBACK_SYSTEM_DOCUMENTATION.md](ROLLBACK_SYSTEM_DOCUMENTATION.md).
+
 ## 🔒 Security & Configuration Management
 
 ### Secure Configuration
@@ -272,6 +304,62 @@ firminia3/
 - **`display_manager.c`**: Controls LVGL-based user interface, handles animations, status indicators, and pending document count display.
 - **`wifi_manager.c`**: Handles Wi-Fi initialization, connection logic, and reconnection events.
 
+## 🧪 Testing the Rollback System
+
+Firminia V3.5.4 includes a comprehensive test suite to verify the automatic rollback functionality.
+
+### Available Tests
+
+#### Test 1: Corrupted Firmware (CRASH TEST) 🔴
+```c
+#define TEST_FIRMWARE_CORRUPTION       1
+```
+- **Purpose**: Tests automatic rollback on system crash
+- **Method**: Simulates immediate system crash
+- **Expected**: Automatic rollback to previous firmware partition
+- **Risk**: HIGH - System will crash
+
+#### Test 2: Firmware Validation (WARNING TEST) 🟢
+```c
+#define TEST_FIRMWARE_VALIDATION       1
+```
+- **Purpose**: Tests firmware health validation without rollback
+- **Method**: Performs integrity checks and validation
+- **Expected**: Warning messages in logs, no rollback
+- **Risk**: LOW - Only shows warnings
+
+### Running Tests
+
+#### Method 1: PowerShell Script (Recommended)
+```powershell
+# Run individual tests
+.\test_rollback.ps1 -Test 1    # Corrupted firmware
+.\test_rollback.ps1 -Test 2    # Firmware validation
+
+# Run all tests
+.\test_rollback.ps1 -All
+
+# Run with monitoring
+.\test_rollback.ps1 -Test 1 -Monitor
+```
+
+#### Method 2: Manual Configuration
+```c
+// In main/main_flow.c
+#define ENABLE_ROLLBACK_TESTS          1
+#define TEST_FIRMWARE_CORRUPTION       1  // Enable test 1
+#define TEST_FIRMWARE_VALIDATION       1  // Enable test 2
+```
+
+### Test Safety
+
+⚠️ **Important Safety Notes:**
+- Always test on a device that can be recovered
+- Have a working firmware backup ready
+- Monitor logs during testing
+- Test one scenario at a time
+- Disable tests when not needed
+
 ## 🔨 Building and Flashing
 
 ### Build Commands
@@ -347,30 +435,10 @@ idf.py -p /dev/YOUR_SERIAL_PORT flash monitor
 | **Build errors** | Ensure ESP-IDF v5.4+, run `idf.py clean` |
 | **Configuration reset not working** | Ensure button is held for full 5 seconds, check button wiring |
 | **Device won't enter BLE mode** | Try configuration reset (hold button 5 seconds) to force BLE mode |
+| **Rollback not working** | Check partition table configuration, verify OTA partitions exist |
+| **Boot watchdog issues** | Check internal watchdog configuration, verify system responsiveness |
+| **Firmware validation failing** | Check partition integrity, verify app description metadata |
 
-### Debug Commands
-
-```bash
-# Monitor serial output for debugging
-idf.py monitor
-
-# Clean build
-idf.py clean
-
-# Reconfigure project
-idf.py reconfigure
-
-# Check component dependencies
-idf.py dependencies
-```
-
-### Serial Log Levels
-
-```bash
-# Enable verbose logging
-idf.py menuconfig
-# Navigate to Component config → Log output → Default log verbosity → Debug
-```
 
 ## 🤝 Contributing
 

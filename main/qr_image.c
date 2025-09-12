@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.3                          *
+ *                     FIRMINIA 3.5.4                          *
  *  File: qr_image.c                                           *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  *  Description: QR Code image data for BLE configuration     *

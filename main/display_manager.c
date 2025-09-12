@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.3                          *
+ *                     FIRMINIA 3.5.4                          *
  *  File: display_manager.c                                  *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -566,7 +566,7 @@ static void ble_alternate_timer_cb(lv_timer_t *timer)
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             snprintf(new_text, sizeof(new_text), "%s\n%s\n\nv3.5.3", 
+             snprintf(new_text, sizeof(new_text), "%s\n%s\n\n3.5.4-OTA", 
                      LV_SYMBOL_POWER, get_translated_string(STR_WARMING_UP, current_lang));
              break;
         case DISPLAY_STATE_BLE_ADVERTISING: {
