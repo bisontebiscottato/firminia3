@@ -5,6 +5,7 @@
  ************************************************************/
 
  #include "display_manager.h"
+#include "global_vars.h"
  #include <stdio.h>
  #include <unistd.h>
  #include <string.h>
@@ -307,7 +308,6 @@ static void ble_alternate_timer_cb(lv_timer_t *timer)
     ESP_LOGI(TAG, "🔄 BLE timer callback triggered, switching to %s", ble_show_text ? "QR" : "text");
     
     // Safety check: Don't run during OTA or when LVGL is suspended
-    extern bool ota_in_progress;
     if (ota_in_progress) {
         ESP_LOGW(TAG, "⚠️ BLE timer callback skipped - OTA in progress");
         return;

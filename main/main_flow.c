@@ -27,6 +27,7 @@
 #include "translations.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
+#include "global_vars.h"
  
  static const char* TAG = "MainFlow";
  
@@ -52,7 +53,7 @@
 
 // OTA variables
 static uint32_t last_ota_check = 0;
-static bool ota_in_progress = false;
+bool ota_in_progress = false;
 static bool force_display_refresh = false;
 #define CURRENT_FIRMWARE_VERSION "3.5.4"
 
