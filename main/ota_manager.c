@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.4                          *
+ *                     FIRMINIA 3.5.5                          *
  *  File: ota_manager.c                                      *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  *  Description: Secure OTA Update Manager Implementation   *
@@ -101,10 +101,10 @@ esp_err_t ota_check_for_updates(const char* current_version, ota_version_info_t*
     // For now, return mock data for testing
     
     // Mock update available
-    strncpy(update_info->version, "3.5.4", sizeof(update_info->version) - 1);
-    strncpy(update_info->url, "https://updates.askme.it/firminia/v3.5.4/firmware.bin", 
+    strncpy(update_info->version, "3.5.5", sizeof(update_info->version) - 1);
+    strncpy(update_info->url, "https://updates.askme.it/firminia/v3.5.5/firmware.bin", 
             sizeof(update_info->url) - 1);
-    strncpy(update_info->signature_url, "https://updates.askme.it/firminia/v3.5.4/firmware.sig", 
+    strncpy(update_info->signature_url, "https://updates.askme.it/firminia/v3.5.5/firmware.sig", 
             sizeof(update_info->signature_url) - 1);
     strncpy(update_info->checksum, "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456", 
             sizeof(update_info->checksum) - 1);

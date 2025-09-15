@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.4                          *
+ *                     FIRMINIA 3.5.5                          *
  *  File: display_manager.c                                  *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -595,7 +595,7 @@ void display_manager_disable_ble_timer(void)
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             snprintf(new_text, sizeof(new_text), "%s\n%s\n\n3.5.4", 
+             snprintf(new_text, sizeof(new_text), "%s\n%s\n\n3.5.5", 
                      LV_SYMBOL_POWER, get_translated_string(STR_WARMING_UP, current_lang));
              break;
         case DISPLAY_STATE_BLE_ADVERTISING: {

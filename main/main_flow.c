@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.4                        *
+ *                     FIRMINIA 3.5.5                        *
  *  File: main_flow.c                                        *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  *                                                            *
@@ -44,10 +44,10 @@
 #define BOOT_HEALTH_CHECK_INTERVAL_MS  5000    // Check every 5 seconds during boot
 
 // Test mode configuration
-#define ENABLE_ROLLBACK_TESTS          1       // Set to 1 to enable test functions
+#define ENABLE_ROLLBACK_TESTS          0       // Set to 1 to enable test functions
 #define TEST_FIRMWARE_CORRUPTION       0       // Test 1: Corrupted firmware (CRASH)
 #define TEST_PROBLEMATIC_FIRMWARE      0       // Test 1b: Problematic firmware (SAFER)
-#define TEST_FIRMWARE_VALIDATION       1       // Test 2: Firmware validation
+#define TEST_FIRMWARE_VALIDATION       0       // Test 2: Firmware validation
 
  bool force_immediate_check = false;   // se true, salta il periodo di attesa
 
@@ -55,7 +55,7 @@
 static uint32_t last_ota_check = 0;
 bool ota_in_progress = false;
 static bool force_display_refresh = false;
-#define CURRENT_FIRMWARE_VERSION "3.5.4"
+#define CURRENT_FIRMWARE_VERSION "3.5.5"
 
 // Boot watchdog variables
 static uint32_t boot_start_time = 0;
@@ -149,11 +149,6 @@ static void log_rollback_info(const char* operation, esp_err_t result)
     ESP_LOGI(TAG, "  - Min free heap: %ld bytes", esp_get_minimum_free_heap_size());
 }
  
- // Check if configuration is using default values
- static bool is_config_default(void)
- {
-     return (strcmp(wifi_ssid, DEFAULT_WIFI_SSID) == 0);
- }
  
  // The configuration is valid if it's not using default values
  static bool is_config_valid(void)
@@ -161,27 +156,6 @@ static void log_rollback_info(const char* operation, esp_err_t result)
      return !is_config_default();
  }
  
-// Reset configuration to default values
-static void reset_config_to_default(void)
-{
-    ESP_LOGW(TAG, "🔄 Resetting configuration to default values...");
-    
-    // Reset all configuration variables to defaults
-    strcpy(wifi_ssid, DEFAULT_WIFI_SSID);
-    strcpy(wifi_password, DEFAULT_WIFI_PASSWORD);
-    strcpy(web_server, DEFAULT_WEB_SERVER);
-    strcpy(web_port, DEFAULT_WEB_PORT);
-    strcpy(web_url, DEFAULT_WEB_URL);
-    strcpy(api_token, DEFAULT_API_TOKEN);
-    strcpy(askmesign_user, DEFAULT_ASKMESIGN_USER);
-    strcpy(api_interval_ms, DEFAULT_API_INTERVAL_MS);
-    strcpy(language, DEFAULT_LANGUAGE);
-    
-    // Save the reset configuration to NVS
-    save_config_to_nvs();
-    
-    ESP_LOGW(TAG, "✅ Configuration reset to defaults and saved to NVS");
-}
 
 // Check if current firmware is valid and mark it as such
 static esp_err_t check_and_mark_firmware_valid(void)

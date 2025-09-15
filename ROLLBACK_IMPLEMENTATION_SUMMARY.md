@@ -3,7 +3,7 @@
 ## 📋 **Panoramica del Lavoro Svolto**
 
 ### **Obiettivo Principale**
-Implementare un sistema di rollback automatico per Firminia 3.5.4 che protegga il dispositivo da firmware corrotti o problematici, garantendo continuità operativa e sicurezza del sistema.
+Implementare un sistema di rollback automatico per Firminia 3.5.5 che protegga il dispositivo da firmware corrotti o problematici, garantendo continuità operativa e sicurezza del sistema.
 
 ### **Risultato Ottenuto**
 ✅ **Sistema di rollback automatico completo e funzionale** con protezione contro crash, boot bloccati e firmware problematici.

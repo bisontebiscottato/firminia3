@@ -121,7 +121,7 @@ TEST 3 - Firmware Validation:
 🧪 TEST 3d: Testing app description validation...
 🧪 TEST: App description read successfully
 🧪 TEST: Project: firminia3
-🧪 TEST: Version: 3.5.4
+🧪 TEST: Version: 3.5.5
 🧪 TEST 3: Firmware validation test completed
 🧪 TEST 3: Check logs for warnings - rollback should NOT occur
 */

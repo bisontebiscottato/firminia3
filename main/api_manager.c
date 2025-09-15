@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.4                          *
+ *                     FIRMINIA 3.5.5                          *
  *  File: api_manager.c                                      *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -254,7 +254,7 @@ esp_err_t api_manager_check_firmware_updates(const char* current_version, ota_ve
     }
     
     // GitHub API headers (no auth needed for public repos)
-    esp_http_client_set_header(client, "User-Agent", "Firminia/3.5.4");
+    esp_http_client_set_header(client, "User-Agent", "Firminia/3.5.5");
     esp_http_client_set_header(client, "Accept", "application/vnd.github.v3+json");
     
     // Allocate response buffer (larger for GitHub API)
