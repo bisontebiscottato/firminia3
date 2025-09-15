@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.5                        *
+ *                     FIRMINIA 3.6.0                        *
  *  File: main_flow.c                                        *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  *                                                            *
@@ -55,7 +55,7 @@
 static uint32_t last_ota_check = 0;
 bool ota_in_progress = false;
 static bool force_display_refresh = false;
-#define CURRENT_FIRMWARE_VERSION "3.5.5"
+#define CURRENT_FIRMWARE_VERSION "3.6.0"
 
 // Boot watchdog variables
 static uint32_t boot_start_time = 0;
@@ -1072,23 +1072,47 @@ static void check_ota_updates(void)
         
         s_current_state = STATE_CHECKING_API;
         display_manager_update(DISPLAY_STATE_CHECKING_API, 0);
-        int practices = api_manager_check_practices();
-          ESP_LOGI(TAG, "practices = %d", practices);
- 
-          if (practices < 0) {
-              ESP_LOGE(TAG, "API call failed (network issue, server error, or certificate issue).");
-              s_current_state = STATE_API_ERROR;
-              display_manager_update(DISPLAY_STATE_API_ERROR, 0);
-          }
-          else if (practices > 0) {
-              s_current_state = STATE_SHOW_PRACTICES;
-              ESP_LOGI(TAG, "Switching state to SHOW_PRACTICES");
-              display_manager_update(DISPLAY_STATE_SHOW_PRACTICES, practices);
-          }
-          else {
-              s_current_state = STATE_NO_PRACTICES;
-              display_manager_update(DISPLAY_STATE_NO_PRACTICES, 0);
-          }
+        
+        int practices = -1;
+        
+        // Check working mode and call appropriate API
+        if (strcmp(working_mode, WORKING_MODE_EDITOR) == 0) {
+            ESP_LOGI(TAG, "📝 Editor mode: Checking documents created by user...");
+            
+            // First get user ID
+            char user_id[32];
+            esp_err_t err = api_manager_get_user_id(user_id, sizeof(user_id));
+            
+            if (err == ESP_OK) {
+                ESP_LOGI(TAG, "✅ User ID obtained: %s", user_id);
+                // Then check documents created by this user
+                practices = api_manager_check_editor_documents(user_id);
+                ESP_LOGI(TAG, "📊 Editor documents = %d", practices);
+            } else {
+                ESP_LOGE(TAG, "❌ Failed to get user ID for editor mode");
+                practices = -1;
+            }
+        } else {
+            ESP_LOGI(TAG, "✍️ Signer mode: Checking practices to sign...");
+            practices = api_manager_check_practices();
+            ESP_LOGI(TAG, "📊 Signer practices = %d", practices);
+        }
+
+        // Handle results (same logic for both modes)
+        if (practices < 0) {
+            ESP_LOGE(TAG, "API call failed (network issue, server error, or certificate issue).");
+            s_current_state = STATE_API_ERROR;
+            display_manager_update(DISPLAY_STATE_API_ERROR, 0);
+        }
+        else if (practices > 0) {
+            s_current_state = STATE_SHOW_PRACTICES;
+            ESP_LOGI(TAG, "Switching state to SHOW_PRACTICES");
+            display_manager_update(DISPLAY_STATE_SHOW_PRACTICES, practices);
+        }
+        else {
+            s_current_state = STATE_NO_PRACTICES;
+            display_manager_update(DISPLAY_STATE_NO_PRACTICES, 0);
+        }
 
           // Check if we need to force display refresh after OTA check feedback
           if (force_display_refresh) {

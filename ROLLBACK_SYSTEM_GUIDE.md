@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Firminia 3.5.5 firmware includes a comprehensive automatic rollback system that protects against corrupted or invalid firmware installations. This system ensures device reliability and prevents bricking from bad OTA updates.
+The Firminia 3.6.0 firmware includes a comprehensive automatic rollback system that protects against corrupted or invalid firmware installations. This system ensures device reliability and prevents bricking from bad OTA updates.
 
 ## 🛡️ Security Features Implemented
 

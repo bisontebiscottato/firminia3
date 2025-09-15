@@ -1,6 +1,6 @@
 # 📋 **CHANGELOG - SISTEMA DI ROLLBACK AUTOMATICO**
 
-## 🚀 **Versione 3.5.5 - Automatic Rollback System**
+## 🚀 **Versione 3.6.0 - Automatic Rollback System**
 
 ### ✨ **Nuove Funzionalità**
 
@@ -176,7 +176,7 @@ CONFIG_BOOTLOADER_APP_SEC_VER_SIZE_EFUSE_FIELD=16
 
 ### 🎉 **Conclusione**
 
-Il sistema di rollback automatico di Firminia 3.5.5 rappresenta un significativo miglioramento in termini di affidabilità e sicurezza del sistema. La protezione automatica contro firmware problematici, combinata con un sistema di test robusto e documentazione completa, garantisce un'esperienza utente superiore e una manutenzione semplificata.
+Il sistema di rollback automatico di Firminia 3.6.0 rappresenta un significativo miglioramento in termini di affidabilità e sicurezza del sistema. La protezione automatica contro firmware problematici, combinata con un sistema di test robusto e documentazione completa, garantisce un'esperienza utente superiore e una manutenzione semplificata.
 
 **Caratteristiche Chiave:**
 - 🛡️ **Protezione Automatica** contro firmware problematici

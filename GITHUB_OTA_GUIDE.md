@@ -11,7 +11,7 @@ This guide explains how to use GitHub Releases for Firminia's Over-The-Air (OTA)
 https://github.com/bisontebiscottato/firminia3/releases/download/{version}/firminia3.bin
 ```
 
-Example: https://github.com/bisontebiscottato/firminia3/releases/download/3.5.5/firminia3.bin
+Example: https://github.com/bisontebiscottato/firminia3/releases/download/3.6.0/firminia3.bin
 
 ### Required Files per Release
 
@@ -67,8 +67,8 @@ openssl dgst -sha256 -sign signing_key.pem \
 #### Via GitHub Web Interface:
 1. Go to https://github.com/bisontebiscottato/firminia3/releases
 2. Click "Create a new release"
-3. Tag version: `3.5.5` (follow semantic versioning)
-4. Release title: `Firminia v3.5.5 - Automatic Rollback System`
+3. Tag version: `3.6.0` (follow semantic versioning)
+4. Release title: `Firminia v3.6.0 - Automatic Rollback System`
 5. Describe changes in release notes
 6. Upload files:
    - `firminia3.bin`
@@ -78,8 +78,8 @@ openssl dgst -sha256 -sign signing_key.pem \
 #### Via GitHub CLI:
 ```bash
 # Create release with files
-gh release create 3.5.5 \
-    --title "Firminia v3.5.5 - Automatic Rollback System" \
+gh release create 3.6.0 \
+    --title "Firminia v3.6.0 - Automatic Rollback System" \
     --notes-file CHANGELOG.md \
     release/firminia3.bin \
     release/firminia3.sig
@@ -95,19 +95,19 @@ GET https://api.github.com/repos/bisontebiscottato/firminia3/releases/latest
 ### Response Format
 ```json
 {
-  "tag_name": "3.5.5",
-  "name": "Firminia v3.5.5 - Automatic Rollback System",
+  "tag_name": "3.6.0",
+  "name": "Firminia v3.6.0 - Automatic Rollback System",
   "published_at": "2025-09-10T10:30:00Z",
   "assets": [
     {
       "name": "firminia3.bin",
       "size": 1887436,
-      "browser_download_url": "https://github.com/bisontebiscottato/firminia3/releases/download/3.5.5/firminia3.bin"
+      "browser_download_url": "https://github.com/bisontebiscottato/firminia3/releases/download/3.6.0/firminia3.bin"
     },
     {
       "name": "firminia3.sig",
       "size": 256,
-      "browser_download_url": "https://github.com/bisontebiscottato/firminia3/releases/download/3.5.5/firminia3.sig"
+      "browser_download_url": "https://github.com/bisontebiscottato/firminia3/releases/download/3.6.0/firminia3.sig"
     }
   ]
 }
@@ -116,9 +116,9 @@ GET https://api.github.com/repos/bisontebiscottato/firminia3/releases/latest
 ## 🔧 Firminia Configuration
 
 ### Version Comparison
-- Current version: `3.5.5`
-- Latest release: `3.5.5`
-- Update available: `strcmp("3.5.5", "3.5.5") < 0` → **true**
+- Current version: `3.6.0`
+- Latest release: `3.6.0`
+- Update available: `strcmp("3.6.0", "3.6.0") < 0` → **true**
 
 ### Update Process
 1. **Check**: GitHub API call every 6 hours
@@ -183,7 +183,7 @@ ESP_LOGI(TAG, "  Duration: %lu ms", update_duration);
 ### 1. Development Testing
 ```bash
 # Create test release
-gh release create 3.5.5-beta \
+gh release create 3.6.0-beta \
     --prerelease \
     --title "Beta Test Release" \
     firminia3.bin
@@ -205,7 +205,7 @@ gh release create 3.5.5-beta \
 ```bash
 # Quick hotfix for critical issues
 idf.py build
-gh release create 3.5.5-hotfix \
+gh release create 3.6.0-hotfix \
     --title "Critical Security Fix" \
     --notes "Fixes critical security vulnerability CVE-2024-XXXX" \
     build/firminia3.bin
@@ -214,7 +214,7 @@ gh release create 3.5.5-hotfix \
 ### Rollback Release
 If a release causes issues:
 1. Create new release with previous working firmware
-2. Increment version number (3.5.5 with 3.5.5 firmware)
+2. Increment version number (3.6.0 with 3.6.0 firmware)
 3. Document rollback in release notes
 
 ## 📞 Support

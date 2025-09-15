@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.5                          *
+ *                     FIRMINIA 3.6.0                          *
  *  File: device_config.c                                    *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -26,6 +26,7 @@ char api_token[API_TOKEN_SIZE];
 char askmesign_user[ASKMESIGN_USER_SIZE];
 char api_interval_ms[API_INTERVAL_MS_SIZE];
 char language[LANGUAGE_SIZE];
+char working_mode[WORKING_MODE_SIZE];
 
 void load_config_from_nvs(void) {
     nvs_handle_t handle;
@@ -43,6 +44,7 @@ void load_config_from_nvs(void) {
         strcpy(askmesign_user, DEFAULT_ASKMESIGN_USER);
         strcpy(api_interval_ms, DEFAULT_API_INTERVAL_MS);
         strcpy(language, DEFAULT_LANGUAGE);
+        strcpy(working_mode, DEFAULT_WORKING_MODE);
         
         // Save default configuration to NVS for future use
         save_config_to_nvs();
@@ -107,6 +109,12 @@ void load_config_from_nvs(void) {
     if (nvs_get_str(handle, NVS_LANGUAGE, language, &len) != ESP_OK || strlen(language) == 0) {
         strcpy(language, DEFAULT_LANGUAGE);
     }
+
+    // Load Working Mode
+    len = sizeof(working_mode);
+    if (nvs_get_str(handle, NVS_WORKING_MODE, working_mode, &len) != ESP_OK || strlen(working_mode) == 0) {
+        strcpy(working_mode, DEFAULT_WORKING_MODE);
+    }
     
     nvs_close(handle);
     
@@ -120,6 +128,8 @@ void load_config_from_nvs(void) {
     ESP_LOGI(TAG, "AskMeSign User: %s", askmesign_user);
     ESP_LOGI(TAG, "API Interval check: %s", api_interval_ms);
     ESP_LOGI(TAG, "Language: %s", language);
+    ESP_LOGI(TAG, "Working Mode: %s (%s)", working_mode, 
+             (strcmp(working_mode, WORKING_MODE_EDITOR) == 0) ? "Editor" : "Signer");
 
 }
 
@@ -140,6 +150,7 @@ void save_config_to_nvs(void) {
     nvs_set_str(handle, NVS_ASKMESIGN_USER, askmesign_user);
     nvs_set_str(handle, NVS_API_INTERVAL_MS, api_interval_ms);
     nvs_set_str(handle, NVS_LANGUAGE, language);
+    nvs_set_str(handle, NVS_WORKING_MODE, working_mode);
 
     nvs_commit(handle);
     nvs_close(handle);
@@ -172,6 +183,7 @@ void reset_config_to_default(void) {
     strcpy(askmesign_user, DEFAULT_ASKMESIGN_USER);
     strcpy(api_interval_ms, DEFAULT_API_INTERVAL_MS);
     strcpy(language, DEFAULT_LANGUAGE);
+    strcpy(working_mode, DEFAULT_WORKING_MODE);
     
     // Save the default configuration to NVS
     save_config_to_nvs();

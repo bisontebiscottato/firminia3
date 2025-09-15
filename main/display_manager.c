@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.5                          *
+ *                     FIRMINIA 3.6.0                          *
  *  File: display_manager.c                                  *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -97,6 +97,9 @@ static bool ble_show_text = true;  // true = show text, false = show QR code
   // Global buffer for the new text to display
  static char new_text[512] = {0};
  
+ // Flag to indicate if state_label should be repositioned (editor mode with SHOW_PRACTICES)
+ static bool reposition_state_label_after_anim = false;
+ 
  // Global pointer for the animated arc
  static lv_obj_t *state_arc = NULL;
  #define ARC_LINE_WIDTH 5
@@ -162,18 +165,30 @@ static bool ble_show_text = true;  // true = show text, false = show QR code
  //------------------------------------------------------------------------------
 static void fade_out_anim_ready_cb(lv_anim_t *a)
 {
-    if(!a || !a->var) return;
-    lv_obj_t *lbl = (lv_obj_t*)a->var;
+   if(!a || !a->var) return;
+   lv_obj_t *lbl = (lv_obj_t*)a->var;
 
-    /* 1. testo nuovo */
-    lv_label_set_text(lbl, new_text);
+   /* 1. testo nuovo */
+   lv_label_set_text(lbl, new_text);
 
-    /* 2. font nuovo */
-    lv_obj_set_style_text_font(lbl, pending_font, 0);
+   /* 2. font nuovo */
+   lv_obj_set_style_text_font(lbl, pending_font, 0);
 
-    /* 3. riallinea e fade-in */
-    lv_obj_align(lbl, LV_ALIGN_CENTER, 0, 0);
-    fade_in_anim_start(lbl);
+   /* 3. riallinea e fade-in */
+   lv_obj_align(lbl, LV_ALIGN_CENTER, 0, 0);
+   
+   // Check if we should position the state_label differently (editor mode with SHOW_PRACTICES)
+   if (reposition_state_label_after_anim) {
+       // In editor mode, position text below the big number
+       lv_obj_align(lbl, LV_ALIGN_CENTER, 0, 40);  // Position below the big number
+       lv_obj_set_style_text_font(lbl, &lv_font_montserrat_28, 0);  // Medium font for better readability
+       fade_in_anim_start(lbl);
+       reposition_state_label_after_anim = false;  // Reset flag
+   } else {
+       // Normal positioning for other modes
+       lv_obj_align(lbl, LV_ALIGN_CENTER, 0, 0);
+       fade_in_anim_start(lbl);
+   }
 }
  
  //------------------------------------------------------------------------------
@@ -595,7 +610,7 @@ void display_manager_disable_ble_timer(void)
      // Update new_text according to the state
      switch (state) {
          case DISPLAY_STATE_WARMING_UP:
-             snprintf(new_text, sizeof(new_text), "%s\n%s\n\n3.5.5", 
+             snprintf(new_text, sizeof(new_text), "%s\n%s\n\n3.6.0", 
                      LV_SYMBOL_POWER, get_translated_string(STR_WARMING_UP, current_lang));
              break;
         case DISPLAY_STATE_BLE_ADVERTISING: {
@@ -646,25 +661,45 @@ void display_manager_disable_ble_timer(void)
             
              pending_font = &lv_font_montserrat_18;
 
-             // Format the string with short_user if it contains %s
+             // Choose appropriate message based on working mode
              char temp_text[512];
-             snprintf(temp_text, sizeof(temp_text), get_translated_string(STR_CHECKING_SIGNATURES, current_lang), short_user);
+             if (strcmp(working_mode, WORKING_MODE_EDITOR) == 0) {
+                 snprintf(temp_text, sizeof(temp_text), get_translated_string(STR_CHECKING_EDITOR_DOCUMENTS, current_lang), short_user);
+             } else {
+                 snprintf(temp_text, sizeof(temp_text), get_translated_string(STR_CHECKING_SIGNER_PRACTICES, current_lang), short_user);
+             }
              strcpy(new_text, LV_SYMBOL_REFRESH);
              strcat(new_text, "\n");
              strcat(new_text, temp_text);
              break;
-        }
+         }
 
          case DISPLAY_STATE_SHOW_PRACTICES:
-             if (practices_count == 1) {
-                 strcpy(new_text, get_translated_string(STR_DOSSIER_TO_SIGN, current_lang));
+             // Choose appropriate message based on working mode
+             if (strcmp(working_mode, WORKING_MODE_EDITOR) == 0) {
+                 // For editor mode, show descriptive text without number (big number will be shown separately)
+                 if (practices_count == 1) {
+                     strcpy(new_text, get_translated_string(STR_EDITOR_DOCUMENT_WAITING, current_lang));
+                 } else {
+                     strcpy(new_text, get_translated_string(STR_EDITOR_DOCUMENTS_WAITING, current_lang));
+                 }
              } else {
-                 strcpy(new_text, get_translated_string(STR_DOSSIERS_TO_SIGN, current_lang));
+                 if (practices_count == 1) {
+                     strcpy(new_text, get_translated_string(STR_DOSSIER_TO_SIGN, current_lang));
+                 } else {
+                     strcpy(new_text, get_translated_string(STR_DOSSIERS_TO_SIGN, current_lang));
+                 }
              }
              break;
          case DISPLAY_STATE_NO_PRACTICES:
-             snprintf(new_text, sizeof(new_text), "%s\n%s", 
-                     LV_SYMBOL_OK, get_translated_string(STR_NO_DOSSIERS, current_lang));
+             // Choose appropriate message based on working mode
+             if (strcmp(working_mode, WORKING_MODE_EDITOR) == 0) {
+                 snprintf(new_text, sizeof(new_text), "%s\n%s", 
+                         LV_SYMBOL_OK, get_translated_string(STR_NO_EDITOR_DOCUMENTS, current_lang));
+             } else {
+                 snprintf(new_text, sizeof(new_text), "%s\n%s", 
+                         LV_SYMBOL_OK, get_translated_string(STR_NO_DOSSIERS, current_lang));
+             }
              break;
          case DISPLAY_STATE_NO_WIFI_SLEEPING:
              snprintf(new_text, sizeof(new_text), "%s\n%s", 
@@ -731,10 +766,18 @@ void display_manager_disable_ble_timer(void)
      if (state == DISPLAY_STATE_SHOW_PRACTICES) {
          lv_label_set_text_fmt(number_label, "%d", practices_count);
          lv_obj_clear_flag(number_label, LV_OBJ_FLAG_HIDDEN);
+         
+         // In editor mode, set flag to reposition the text label after animation
+         if (strcmp(working_mode, WORKING_MODE_EDITOR) == 0) {
+             reposition_state_label_after_anim = true;
+         } else {
+             reposition_state_label_after_anim = false;
+         }
 
      } else {
          // Hide number_label in other states
          lv_obj_add_flag(number_label, LV_OBJ_FLAG_HIDDEN);
+         reposition_state_label_after_anim = false;
      }
 
     // Hide MAC label in all states except WIFI_CONNECTING

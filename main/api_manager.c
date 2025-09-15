@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.5                          *
+ *                     FIRMINIA 3.6.0                          *
  *  File: api_manager.c                                      *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -254,7 +254,7 @@ esp_err_t api_manager_check_firmware_updates(const char* current_version, ota_ve
     }
     
     // GitHub API headers (no auth needed for public repos)
-    esp_http_client_set_header(client, "User-Agent", "Firminia/3.5.5");
+    esp_http_client_set_header(client, "User-Agent", "Firminia/3.6.0");
     esp_http_client_set_header(client, "Accept", "application/vnd.github.v3+json");
     
     // Allocate response buffer (larger for GitHub API)
@@ -375,5 +375,209 @@ esp_err_t api_manager_check_firmware_updates(const char* current_version, ota_ve
     free(buffer);
     
     return err;
+}
+
+// Editor mode: Get user ID from /api/v2/account
+esp_err_t api_manager_get_user_id(char* user_id_buffer, size_t buffer_size)
+{
+    if (!user_id_buffer || buffer_size == 0) {
+        ESP_LOGE(TAG, "❌ Invalid buffer parameters");
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    ESP_LOGI(TAG, "🔍 Getting user ID from /api/v2/account...");
+    
+    // Build account URL
+    char account_url[512];
+    snprintf(account_url, sizeof(account_url), "https://%s/api/v2/account", web_server);
+    
+    ESP_LOGI(TAG, "📡 Account API URL: %s", account_url);
+    
+    // HTTP client configuration
+    esp_http_client_config_t config = {
+        .url = account_url,
+        .method = HTTP_METHOD_GET,
+        .timeout_ms = 30000,
+        .buffer_size = 4096,
+        .buffer_size_tx = 1024,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+        .skip_cert_common_name_check = false,
+    };
+    
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    if (!client) {
+        ESP_LOGE(TAG, "❌ Failed to initialize HTTP client");
+        return ESP_FAIL;
+    }
+    
+    // Set headers
+    esp_http_client_set_header(client, "X-SignToken", api_token);
+    esp_http_client_set_header(client, "X-SignUser", askmesign_user);
+    esp_http_client_set_header(client, "User-Agent", "Firminia/3.6.0");
+    esp_http_client_set_header(client, "Accept", "application/json");
+    
+    // Allocate response buffer
+    char* buffer = malloc(4096);
+    if (!buffer) {
+        ESP_LOGE(TAG, "❌ Failed to allocate response buffer");
+        esp_http_client_cleanup(client);
+        return ESP_ERR_NO_MEM;
+    }
+    
+    esp_err_t err = esp_http_client_open(client, 0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "❌ Failed to open HTTP connection: %s", esp_err_to_name(err));
+        esp_http_client_cleanup(client);
+        free(buffer);
+        return err;
+    }
+    
+    // Read response
+    int content_length = esp_http_client_fetch_headers(client);
+    int status_code = esp_http_client_get_status_code(client);
+    
+    ESP_LOGI(TAG, "📊 Account API Response - Status: %d, Content Length: %d", status_code, content_length);
+    
+    if (status_code == 200) {
+        int data_read = esp_http_client_read_response(client, buffer, 4095);
+        if (data_read > 0) {
+            buffer[data_read] = '\0';
+            ESP_LOGI(TAG, "📄 Account API Response: %s", buffer);
+            
+            // Parse JSON to extract idUser
+            cJSON *json = cJSON_Parse(buffer);
+            if (json) {
+                cJSON *id_user = cJSON_GetObjectItem(json, "idUser");
+                if (cJSON_IsNumber(id_user)) {
+                    snprintf(user_id_buffer, buffer_size, "%d", id_user->valueint);
+                    ESP_LOGI(TAG, "✅ User ID extracted: %s", user_id_buffer);
+                    cJSON_Delete(json);
+                    err = ESP_OK;
+                } else {
+                    ESP_LOGE(TAG, "❌ idUser not found or not a number in response");
+                    cJSON_Delete(json);
+                    err = ESP_ERR_NOT_FOUND;
+                }
+            } else {
+                ESP_LOGE(TAG, "❌ Failed to parse JSON response");
+                err = ESP_ERR_INVALID_RESPONSE;
+            }
+        } else {
+            ESP_LOGE(TAG, "❌ No data received from account API");
+            err = ESP_ERR_INVALID_RESPONSE;
+        }
+    } else {
+        ESP_LOGE(TAG, "❌ Account API error - Status: %d", status_code);
+        err = ESP_ERR_HTTP_BASE + status_code;
+    }
+    
+    esp_http_client_close(client);
+    esp_http_client_cleanup(client);
+    free(buffer);
+    
+    return err;
+}
+
+// Editor mode: Check documents created by user (pending signature)
+int api_manager_check_editor_documents(const char* user_id)
+{
+    if (!user_id) {
+        ESP_LOGE(TAG, "❌ Invalid user_id parameter");
+        return -1;
+    }
+    
+    ESP_LOGI(TAG, "🔍 Checking documents for editor (user ID: %s)...", user_id);
+    
+    // Build documents URL with query parameters
+    char documents_url[512];
+    snprintf(documents_url, sizeof(documents_url), 
+             "https://%s/api/v2/files/?idUser=%s&page=0&size=1&sort=idFile,desc&status=L", 
+             web_server, user_id);
+    
+    ESP_LOGI(TAG, "📡 Documents API URL: %s", documents_url);
+    
+    // HTTP client configuration
+    esp_http_client_config_t config = {
+        .url = documents_url,
+        .method = HTTP_METHOD_GET,
+        .timeout_ms = 30000,
+        .buffer_size = 65536,  // Increased to 64KB for very large JSON responses
+        .buffer_size_tx = 1024,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+        .skip_cert_common_name_check = false,
+    };
+    
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    if (!client) {
+        ESP_LOGE(TAG, "❌ Failed to initialize HTTP client");
+        return -1;
+    }
+    
+    // Set headers
+    esp_http_client_set_header(client, "X-SignToken", api_token);
+    esp_http_client_set_header(client, "X-SignUser", askmesign_user);
+    esp_http_client_set_header(client, "User-Agent", "Firminia/3.6.0");
+    esp_http_client_set_header(client, "Accept", "application/json");
+    
+    // Allocate response buffer (64KB for very large JSON responses)
+    char* buffer = malloc(65536);
+    if (!buffer) {
+        ESP_LOGE(TAG, "❌ Failed to allocate response buffer");
+        esp_http_client_cleanup(client);
+        return -1;
+    }
+    
+    esp_err_t err = esp_http_client_open(client, 0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "❌ Failed to open HTTP connection: %s", esp_err_to_name(err));
+        esp_http_client_cleanup(client);
+        free(buffer);
+        return -1;
+    }
+    
+    // Read response
+    int content_length = esp_http_client_fetch_headers(client);
+    int status_code = esp_http_client_get_status_code(client);
+    
+    ESP_LOGI(TAG, "📊 Documents API Response - Status: %d, Content Length: %d", status_code, content_length);
+    
+    int documents_found = -1;
+    
+    if (status_code == 200) {
+        int data_read = esp_http_client_read_response(client, buffer, 65535);
+        if (data_read > 0) {
+            buffer[data_read] = '\0';
+            ESP_LOGI(TAG, "📄 Documents API Response (%d bytes): %s", data_read, buffer);
+            
+            // Parse JSON to extract totalElements
+            cJSON *json = cJSON_Parse(buffer);
+            if (json) {
+                cJSON *total_elements = cJSON_GetObjectItem(json, "totalElements");
+                if (cJSON_IsNumber(total_elements)) {
+                    documents_found = total_elements->valueint;
+                    ESP_LOGI(TAG, "✅ Editor documents found: %d", documents_found);
+                } else {
+                    ESP_LOGE(TAG, "❌ totalElements not found or not a number in response");
+                    documents_found = -1;
+                }
+                cJSON_Delete(json);
+            } else {
+                ESP_LOGE(TAG, "❌ Failed to parse JSON response");
+                documents_found = -1;
+            }
+        } else {
+            ESP_LOGE(TAG, "❌ No data received from documents API");
+            documents_found = -1;
+        }
+    } else {
+        ESP_LOGE(TAG, "❌ Documents API error - Status: %d", status_code);
+        documents_found = -1;
+    }
+    
+    esp_http_client_close(client);
+    esp_http_client_cleanup(client);
+    free(buffer);
+    
+    return documents_found;
 }
  

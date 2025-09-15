@@ -20,6 +20,7 @@
 #define NVS_ASKMESIGN_USER    "askmesign_user"
 #define NVS_API_INTERVAL_MS   "api_interval_ms"
 #define NVS_LANGUAGE          "language"
+#define NVS_WORKING_MODE      "working_mode"
 
 // Buffer sizes for string parameters
 #define WIFI_SSID_SIZE        33
@@ -31,6 +32,7 @@
 #define ASKMESIGN_USER_SIZE   64
 #define API_INTERVAL_MS_SIZE  12
 #define LANGUAGE_SIZE          2
+#define WORKING_MODE_SIZE      2
 
 // Global configuration variables
 extern char wifi_ssid[WIFI_SSID_SIZE];
@@ -42,6 +44,7 @@ extern char api_token[API_TOKEN_SIZE];
 extern char askmesign_user[ASKMESIGN_USER_SIZE];
 extern char api_interval_ms[API_INTERVAL_MS_SIZE];
 extern char language[LANGUAGE_SIZE];
+extern char working_mode[WORKING_MODE_SIZE];
 
 // Default values - Non-functional placeholders that require BLE configuration
 #define DEFAULT_WIFI_SSID        ""
@@ -53,6 +56,11 @@ extern char language[LANGUAGE_SIZE];
 #define DEFAULT_ASKMESIGN_USER   ""
 #define DEFAULT_API_INTERVAL_MS  "30000"
 #define DEFAULT_LANGUAGE         "0"
+#define DEFAULT_WORKING_MODE     "0"  // 0 = Signer mode (default), 1 = Editor mode
+
+// Working mode constants
+#define WORKING_MODE_SIGNER      "0"
+#define WORKING_MODE_EDITOR      "1"
 
 // Function declarations
 void load_config_from_nvs(void);

@@ -1,8 +1,8 @@
-# 🔄 **SISTEMA DI ROLLBACK AUTOMATICO - FIRMINIA 3.5.5**
+# 🔄 **SISTEMA DI ROLLBACK AUTOMATICO - FIRMINIA 3.6.0**
 
 ## 📋 **Panoramica**
 
-Il sistema di rollback automatico di Firminia 3.5.5 protegge il dispositivo da firmware corrotti o problematici, garantendo la continuità operativa e la sicurezza del sistema.
+Il sistema di rollback automatico di Firminia 3.6.0 protegge il dispositivo da firmware corrotti o problematici, garantendo la continuità operativa e la sicurezza del sistema.
 
 ## 🎯 **Caratteristiche Principali**
 
@@ -150,7 +150,7 @@ static esp_err_t validate_firmware_health(void)
 🔍 Performing firmware health validation...
 📋 Firmware health check passed:
   - Project: firminia3
-  - Version: 3.5.5
+  - Version: 3.6.0
   - Date: Sep 12 2025 15:15:44
 ```
 
@@ -270,7 +270,7 @@ static esp_err_t validate_firmware_health(void)
 
 ## 🎉 **Conclusione**
 
-Il sistema di rollback automatico di Firminia 3.5.5 fornisce una protezione robusta e affidabile contro firmware problematici, garantendo la continuità operativa del dispositivo e la sicurezza del sistema.
+Il sistema di rollback automatico di Firminia 3.6.0 fornisce una protezione robusta e affidabile contro firmware problematici, garantendo la continuità operativa del dispositivo e la sicurezza del sistema.
 
 **Caratteristiche Chiave:**
 - ✅ **Rollback Automatico** su crash del sistema

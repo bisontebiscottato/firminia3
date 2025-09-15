@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.5                          *
+ *                     FIRMINIA 3.6.0                          *
  *  File: ble_manager.c                                      *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -170,17 +170,30 @@ static uint8_t config_char_uuid[16] = {
      return (interval >= 10000 && interval <= 9000000);
  }
 
- static bool validate_language(const char *language_str) {
-     if (!language_str || strlen(language_str) == 0)
-         return false;
-     for (size_t i = 0; i < strlen(language_str); i++) {
-         if (!isdigit((unsigned char)language_str[i])) {
-             return false;
-         }
-     }
-     int lang = atoi(language_str);
-     return (lang >= 0 && lang < LANGUAGE_COUNT);
- }
+static bool validate_language(const char *language_str) {
+    if (!language_str || strlen(language_str) == 0)
+        return false;
+    for (size_t i = 0; i < strlen(language_str); i++) {
+        if (!isdigit((unsigned char)language_str[i])) {
+            return false;
+        }
+    }
+    int lang = atoi(language_str);
+    return (lang >= 0 && lang < LANGUAGE_COUNT);
+}
+
+// Working mode: must be "0" (Signer) or "1" (Editor)
+static bool validate_working_mode(const char *working_mode_str) {
+    if (!working_mode_str || strlen(working_mode_str) == 0)
+        return false;
+    for (size_t i = 0; i < strlen(working_mode_str); i++) {
+        if (!isdigit((unsigned char)working_mode_str[i])) {
+            return false;
+        }
+    }
+    int mode = atoi(working_mode_str);
+    return (mode == 0 || mode == 1);  // 0 = Signer, 1 = Editor
+}
 
 /**
  * @brief Generate a random device name with format "FIRMINIA-XXX"
@@ -225,11 +238,12 @@ static void generate_random_device_name(void)
      cJSON *port_item = cJSON_GetObjectItemCaseSensitive(json, "port");
      cJSON *url_item = cJSON_GetObjectItemCaseSensitive(json, "url");
      cJSON *token_item = cJSON_GetObjectItemCaseSensitive(json, "token");
-     cJSON *user_item = cJSON_GetObjectItemCaseSensitive(json, "user");
-     cJSON *interval_item = cJSON_GetObjectItemCaseSensitive(json, "interval");
-     cJSON *language_item = cJSON_GetObjectItemCaseSensitive(json, "language");
- 
-     bool valid = true;
+    cJSON *user_item = cJSON_GetObjectItemCaseSensitive(json, "user");
+    cJSON *interval_item = cJSON_GetObjectItemCaseSensitive(json, "interval");
+    cJSON *language_item = cJSON_GetObjectItemCaseSensitive(json, "language");
+    cJSON *working_mode_item = cJSON_GetObjectItemCaseSensitive(json, "working_mode");
+
+    bool valid = true;
  
      if (!cJSON_IsString(ssid_item) || !validate_ssid(ssid_item->valuestring)) {
          ESP_LOGE(TAG, "❌ Campo 'ssid' mancante o non valido");
@@ -264,29 +278,36 @@ static void generate_random_device_name(void)
          valid = false;
      }
     if (!cJSON_IsString(language_item) || !validate_language(language_item->valuestring)) {
-         ESP_LOGE(TAG, "❌ Campo 'language' mancante o non valido (0=EN, 1=IT, 2=FR, 3=ES)");
-         valid = false;
-     }
-     if (!valid) {
+        ESP_LOGE(TAG, "❌ Campo 'language' mancante o non valido (0=EN, 1=IT, 2=FR, 3=ES)");
+        valid = false;
+    }
+    if (!cJSON_IsString(working_mode_item) || !validate_working_mode(working_mode_item->valuestring)) {
+        ESP_LOGE(TAG, "❌ Campo 'working_mode' mancante o non valido (0=Signer, 1=Editor)");
+        valid = false;
+    }
+    if (!valid) {
          ESP_LOGE(TAG, "❌ JSON non valido. Ignoro la configurazione.");
          cJSON_Delete(json);
          return;
      }
  
-     // Update global configuration variables, if present in JSON
-     strcpy(wifi_ssid, ssid_item->valuestring);
-     strcpy(wifi_password, password_item->valuestring);
-     strcpy(web_server, server_item->valuestring);
-     strcpy(web_port, port_item->valuestring);
-     strcpy(web_url, url_item->valuestring);
-     strcpy(api_token, token_item->valuestring);
-     strcpy(askmesign_user, user_item->valuestring);
-     strcpy(api_interval_ms, interval_item->valuestring);
-     strcpy(language, language_item->valuestring);
+    // Update global configuration variables, if present in JSON
+    strcpy(wifi_ssid, ssid_item->valuestring);
+    strcpy(wifi_password, password_item->valuestring);
+    strcpy(web_server, server_item->valuestring);
+    strcpy(web_port, port_item->valuestring);
+    strcpy(web_url, url_item->valuestring);
+    strcpy(api_token, token_item->valuestring);
+    strcpy(askmesign_user, user_item->valuestring);
+    strcpy(api_interval_ms, interval_item->valuestring);
+    strcpy(language, language_item->valuestring);
+    strcpy(working_mode, working_mode_item->valuestring);
 
-     // Save the updated configuration to NVS
-     save_config_to_nvs();
-     ESP_LOGI(TAG, "✅ Configurazione aggiornata e salvata in NVS!");
+    // Save the updated configuration to NVS
+    save_config_to_nvs();
+    ESP_LOGI(TAG, "✅ Configurazione aggiornata e salvata in NVS!");
+    ESP_LOGI(TAG, "📝 Working Mode configured: %s (%s)", working_mode, 
+             (strcmp(working_mode, WORKING_MODE_EDITOR) == 0) ? "Editor" : "Signer");
  
      // Update language setting
      language_t new_lang = (language_t)atoi(language);

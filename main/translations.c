@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.5                          *
+ *                     FIRMINIA 3.6.0                          *
  *  File: translations.c                                      *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -167,10 +167,10 @@ static const char* translations[STR_COUNT][LANGUAGE_COUNT] = {
     },
     // STR_OTA_DOWNLOADING_DISPLAY
     {
-        "Downloading...",           // English
-        "Scaricamento...",          // Italian
-        "Telechargement...",        // French
-        "Descargando..."            // Spanish
+        "\nDownloading...",           // English
+        "\nScaricamento...",          // Italian
+        "\nTelechargement...",        // French
+        "\nDescargando..."            // Spanish
     },
     // STR_OTA_PLEASE_WAIT
     {
@@ -185,6 +185,55 @@ static const char* translations[STR_COUNT][LANGUAGE_COUNT] = {
         "Nessun\naggiornamento\ndisponibile",  // Italian
         "Aucune\nmise a jour\ndisponible",     // French
         "No hay\nactualizaciones\ndisponibles" // Spanish
+    },
+    // STR_CHECKING_EDITOR_DOCUMENTS
+    {
+        "Checking\neditor documents\nfor %s...",    // English
+        "Controllo\ndocumenti redattore\nper %s...", // Italian
+        "Verification\ndocuments redacteur\npour %s...", // French
+        "Verificando\ndocumentos editor\npara %s..."     // Spanish
+    },
+    // STR_CHECKING_SIGNER_PRACTICES
+    {
+        "Checking\nsignatures for\n%s...",      // English
+        "Controllo\nfirme per\n%s...",          // Italian
+        "Verification\nsignatures pour\n%s...", // French
+        "Verificando\nfirmas para\n%s..."       // Spanish
+    },
+    // STR_EDITOR_DOCUMENTS_TO_SIGN
+    {
+        "%d documents\nwaiting for\nsignature",     // English
+        "%d documenti\nin attesa di\nfirma",        // Italian
+        "%d documents\nen attente de\nsignature",   // French
+        "%d documentos\nesperando\nfirma"           // Spanish
+    },
+    // STR_EDITOR_DOCUMENT_TO_SIGN
+    {
+        "%d document\nwaiting for\nsignature",      // English
+        "%d documento\nin attesa di\nfirma",        // Italian
+        "%d document\nen attente de\nsignature",    // French
+        "%d documento\nesperando\nfirma"            // Spanish
+    },
+    // STR_EDITOR_DOCUMENTS_WAITING
+    {
+        "Documents\nwaiting for\nsignature",     // English
+        "Documenti\nin attesa di\nfirma",        // Italian
+        "Documents\nen attente de\nsignature",   // French
+        "Documentos\nesperando\nfirma"           // Spanish
+    },
+    // STR_EDITOR_DOCUMENT_WAITING
+    {
+        "Document\nwaiting for\nsignature",      // English
+        "Documento\nin attesa di\nfirma",        // Italian
+        "Document\nen attente de\nsignature",    // French
+        "Documento\nesperando\nfirma"            // Spanish
+    },
+    // STR_NO_EDITOR_DOCUMENTS
+    {
+        "No documents\nwaiting for\nsignature.\nRelax.",  // English
+        "Nessun documento\nin attesa di\nfirma.\nRilassati.", // Italian
+        "Aucun document\nen attente de\nsignature.\nDetendez-vous.", // French
+        "Ningun documento\nesperando\nfirma.\nRelajate."    // Spanish
     }
 };
 

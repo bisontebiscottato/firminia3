@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.5.5                          *
+ *                     FIRMINIA 3.6.0                          *
  *  File: translations.h                                      *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -48,6 +48,14 @@ typedef enum {
     STR_OTA_DOWNLOADING_DISPLAY,
     STR_OTA_PLEASE_WAIT,
     STR_OTA_NO_UPDATES_AVAILABLE,
+    // Working mode messages
+    STR_CHECKING_EDITOR_DOCUMENTS,
+    STR_CHECKING_SIGNER_PRACTICES,
+    STR_EDITOR_DOCUMENTS_TO_SIGN,
+    STR_EDITOR_DOCUMENT_TO_SIGN,
+    STR_EDITOR_DOCUMENTS_WAITING,      // Text without number for editor mode (plural)
+    STR_EDITOR_DOCUMENT_WAITING,       // Text without number for editor mode (singular)
+    STR_NO_EDITOR_DOCUMENTS,
     STR_COUNT
 } string_id_t;
 
