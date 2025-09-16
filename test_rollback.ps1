@@ -1,7 +1,7 @@
 # ============================================================================
 # ROLLBACK TEST SCRIPT
 # ============================================================================
-# This script helps you test the rollback functionality of Firminia 3.6.0
+# This script helps you test the rollback functionality of Firminia 3.6.1
 # 
 # Usage:
 #   .\test_rollback.ps1 -Test 1    # Test corrupted firmware

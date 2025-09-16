@@ -96,12 +96,12 @@ For production OTA updates:
 ```bash
 # Sign firmware for OTA distribution
 espsecure.py sign_data --keyfile firminia_signing_key.pem \
-    --output firminia_v3.6.0_signed.bin \
+    --output firminia_v3.6.1_signed.bin \
     build/firminia3.bin
 
 # Generate signature for verification
 openssl dgst -sha256 -sign firminia_signing_key.pem \
-    -out firminia_v3.6.0.sig \
+    -out firminia_v3.6.1.sig \
     build/firminia3.bin
 ```
 
@@ -148,12 +148,12 @@ static const char* RSA_PUBLIC_KEY =
 Add these endpoints to your server:
 
 ```
-GET /api/v2/firmware/check?device=firminia&current=3.6.0
+GET /api/v2/firmware/check?device=firminia&current=3.6.1
 Response: {
   "update_available": true,
-  "version": "3.6.0",
-  "download_url": "https://updates.askme.it/firminia/v3.6.0/firmware.bin",
-  "signature_url": "https://updates.askme.it/firminia/v3.6.0/firmware.sig",
+  "version": "3.6.1",
+  "download_url": "https://updates.askme.it/firminia/v3.6.1/firmware.bin",
+  "signature_url": "https://updates.askme.it/firminia/v3.6.1/firmware.sig",
   "size": 1048576,
   "checksum": "sha256_hex_string"
 }
@@ -163,11 +163,11 @@ Response: {
 
 ```
 /updates/firminia/
-├── v3.6.0/
+├── v3.6.1/
 │   ├── firmware.bin
 │   ├── firmware.sig
 │   └── manifest.json
-├── v3.6.0/
+├── v3.6.1/
 │   ├── firmware.bin (signed)
 │   ├── firmware.sig
 │   └── manifest.json

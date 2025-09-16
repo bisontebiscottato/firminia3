@@ -1,6 +1,6 @@
 # Changelog - Firminia V3
 
-## Versione 3.6.0 - Sistema di Rollback Automatico
+## Versione 3.6.1 - Sistema di Rollback Automatico
 
 ### 🚀 Nuove Funzionalità
 

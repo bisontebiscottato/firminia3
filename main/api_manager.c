@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.6.0                          *
+ *                     FIRMINIA 3.6.1                          *
  *  File: api_manager.c                                      *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  ************************************************************/
@@ -254,7 +254,7 @@ esp_err_t api_manager_check_firmware_updates(const char* current_version, ota_ve
     }
     
     // GitHub API headers (no auth needed for public repos)
-    esp_http_client_set_header(client, "User-Agent", "Firminia/3.6.0");
+    esp_http_client_set_header(client, "User-Agent", "Firminia/3.6.1");
     esp_http_client_set_header(client, "Accept", "application/vnd.github.v3+json");
     
     // Allocate response buffer (larger for GitHub API)
@@ -315,6 +315,14 @@ esp_err_t api_manager_check_firmware_updates(const char* current_version, ota_ve
                                     const char* download_url_str = cJSON_GetStringValue(download_url);
                                     ESP_LOGI(TAG, "🔗 Found firmware URL: %s", download_url_str);
                                     
+                                    // Validate firmware size (should be between 1MB and 10MB for ESP32)
+                                    uint32_t firmware_size = (uint32_t)cJSON_GetNumberValue(size);
+                                    if (firmware_size < 1024 * 1024 || firmware_size > 10 * 1024 * 1024) {
+                                        ESP_LOGW(TAG, "⚠️ Suspicious firmware size: %lu bytes (%.2f MB)", 
+                                                firmware_size, firmware_size / (1024.0 * 1024.0));
+                                        // Continue anyway but log warning
+                                    }
+                                    
                                     strncpy(update_info->version, clean_latest, sizeof(update_info->version) - 1);
                                     update_info->version[sizeof(update_info->version) - 1] = '\0';
                                     
@@ -326,13 +334,14 @@ esp_err_t api_manager_check_firmware_updates(const char* current_version, ota_ve
                                             "https://github.com/bisontebiscottato/firminia3/releases/download/%s/firminia3.sig",
                                             latest_version);
                                     
-                                    update_info->size = (uint32_t)cJSON_GetNumberValue(size);
+                                    update_info->size = firmware_size;
                                     
                                     // For now, leave checksum empty (could be added to GitHub release notes)
                                     strcpy(update_info->checksum, "");
                                     
-                                    ESP_LOGI(TAG, "✅ Update available: %s → %s (size: %lu bytes)", 
-                                             current_version, update_info->version, update_info->size);
+                                    ESP_LOGI(TAG, "✅ Update available: %s → %s (size: %lu bytes, %.2f MB)", 
+                                             current_version, update_info->version, update_info->size,
+                                             update_info->size / (1024.0 * 1024.0));
                                     
                                     err = ESP_OK;
                                     break;
@@ -413,7 +422,7 @@ esp_err_t api_manager_get_user_id(char* user_id_buffer, size_t buffer_size)
     // Set headers
     esp_http_client_set_header(client, "X-SignToken", api_token);
     esp_http_client_set_header(client, "X-SignUser", askmesign_user);
-    esp_http_client_set_header(client, "User-Agent", "Firminia/3.6.0");
+    esp_http_client_set_header(client, "User-Agent", "Firminia/3.6.1");
     esp_http_client_set_header(client, "Accept", "application/json");
     
     // Allocate response buffer
@@ -516,7 +525,7 @@ int api_manager_check_editor_documents(const char* user_id)
     // Set headers
     esp_http_client_set_header(client, "X-SignToken", api_token);
     esp_http_client_set_header(client, "X-SignUser", askmesign_user);
-    esp_http_client_set_header(client, "User-Agent", "Firminia/3.6.0");
+    esp_http_client_set_header(client, "User-Agent", "Firminia/3.6.1");
     esp_http_client_set_header(client, "Accept", "application/json");
     
     // Allocate response buffer (64KB for very large JSON responses)

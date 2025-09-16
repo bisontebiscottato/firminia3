@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.6.0                          *
+ *                     FIRMINIA 3.6.1                          *
  *  File: ota_manager.c                                      *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  *  Description: Secure OTA Update Manager Implementation   *
@@ -101,10 +101,10 @@ esp_err_t ota_check_for_updates(const char* current_version, ota_version_info_t*
     // For now, return mock data for testing
     
     // Mock update available
-    strncpy(update_info->version, "3.6.0", sizeof(update_info->version) - 1);
-    strncpy(update_info->url, "https://updates.askme.it/firminia/v3.6.0/firmware.bin", 
+    strncpy(update_info->version, "3.6.1", sizeof(update_info->version) - 1);
+    strncpy(update_info->url, "https://updates.askme.it/firminia/v3.6.1/firmware.bin", 
             sizeof(update_info->url) - 1);
-    strncpy(update_info->signature_url, "https://updates.askme.it/firminia/v3.6.0/firmware.sig", 
+    strncpy(update_info->signature_url, "https://updates.askme.it/firminia/v3.6.1/firmware.sig", 
             sizeof(update_info->signature_url) - 1);
     strncpy(update_info->checksum, "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456", 
             sizeof(update_info->checksum) - 1);
@@ -137,11 +137,21 @@ esp_err_t ota_start_update(const ota_version_info_t* update_info)
         return ESP_ERR_INVALID_STATE;
     }
     
-    // Create OTA task
-    BaseType_t result = xTaskCreate(ota_task, "ota_task", 8192, (void*)update_info, 5, 
+    // Create a copy of update_info for the task (to avoid stack corruption)
+    ota_version_info_t* update_info_copy = malloc(sizeof(ota_version_info_t));
+    if (update_info_copy == NULL) {
+        xSemaphoreGive(g_ota_state.mutex);
+        ESP_LOGE(TAG, "❌ Failed to allocate memory for update info");
+        return ESP_ERR_NO_MEM;
+    }
+    memcpy(update_info_copy, update_info, sizeof(ota_version_info_t));
+    
+    // Create OTA task with copied data
+    BaseType_t result = xTaskCreate(ota_task, "ota_task", 8192, (void*)update_info_copy, 5, 
                                     &g_ota_state.ota_task_handle);
     
     if (result != pdPASS) {
+        free(update_info_copy);  // Clean up allocated memory
         xSemaphoreGive(g_ota_state.mutex);
         ESP_LOGE(TAG, "❌ Failed to create OTA task");
         return ESP_ERR_NO_MEM;
@@ -156,12 +166,27 @@ esp_err_t ota_start_update(const ota_version_info_t* update_info)
 
 static void ota_task(void* pvParameter)
 {
-    const ota_version_info_t* update_info = (const ota_version_info_t*)pvParameter;
+    ota_version_info_t* update_info = (ota_version_info_t*)pvParameter;
     esp_err_t err = ESP_OK;
     
     ESP_LOGI(TAG, "📥 OTA Task started");
     
-    // Step 1: Download firmware
+    // Validate that we have valid update info
+    if (update_info == NULL) {
+        ESP_LOGE(TAG, "❌ Invalid update info parameter");
+        ota_set_error(OTA_ERROR_DOWNLOAD_FAILED);
+        vTaskDelete(NULL);
+        return;
+    }
+    
+    // Step 1: Validate update info before starting
+    if (update_info->size == 0 || update_info->size > 10 * 1024 * 1024) {
+        ESP_LOGE(TAG, "❌ Invalid firmware size before download: %lu bytes", update_info->size);
+        ota_set_error(OTA_ERROR_DOWNLOAD_FAILED);
+        goto cleanup;
+    }
+    
+    // Step 2: Download firmware
     ota_set_status(OTA_STATUS_DOWNLOADING);
     ota_notify_progress(0);
     
@@ -172,13 +197,13 @@ static void ota_task(void* pvParameter)
         goto cleanup;
     }
     
-    // Step 2: Verify signature (skipped for initial testing)
+    // Step 3: Verify signature (skipped for initial testing)
     ota_set_status(OTA_STATUS_VERIFYING);
     ota_notify_progress(80);
     
     ESP_LOGI(TAG, "ℹ️ Signature verification skipped for testing");
     
-    // Step 3: Install firmware
+    // Step 4: Install firmware
     ota_set_status(OTA_STATUS_INSTALLING);
     ota_notify_progress(90);
     
@@ -194,17 +219,38 @@ static void ota_task(void* pvParameter)
     
     ESP_LOGI(TAG, "✅ OTA update completed successfully! Rebooting...");
     vTaskDelay(pdMS_TO_TICKS(2000)); // Give time for UI update
+    
+    // Free memory before reboot
+    if (update_info) {
+        free(update_info);
+    }
+    
     esp_restart();
     
 cleanup:
     ota_set_status(OTA_STATUS_ERROR);
     g_ota_state.ota_task_handle = NULL;
+    
+    // Free the allocated update_info memory
+    if (update_info) {
+        free(update_info);
+    }
+    
     vTaskDelete(NULL);
 }
 
 static esp_err_t ota_download_firmware(const ota_version_info_t* update_info)
 {
     ESP_LOGI(TAG, "📥 Downloading firmware from: %s", update_info->url);
+    
+    // Validate firmware size to prevent division by zero and other issues
+    if (update_info->size == 0 || update_info->size > 10 * 1024 * 1024) { // Max 10MB
+        ESP_LOGE(TAG, "❌ Invalid firmware size: %lu bytes", update_info->size);
+        return ESP_ERR_INVALID_SIZE;
+    }
+    
+    ESP_LOGI(TAG, "📏 Firmware size: %lu bytes (%.2f MB)", update_info->size, 
+             update_info->size / (1024.0 * 1024.0));
     
     esp_http_client_config_t config = {
         .url = update_info->url,
@@ -249,9 +295,15 @@ static esp_err_t ota_download_firmware(const ota_version_info_t* update_info)
             break;
         }
         
-        // Update progress
+        // Update progress with safe division
         int data_read = esp_https_ota_get_image_len_read(g_ota_state.ota_handle);
-        int progress = (data_read * 70) / update_info->size; // 0-70% for download
+        int progress = 0;
+        if (update_info->size > 0 && data_read >= 0) {
+            progress = (data_read * 70) / update_info->size; // 0-70% for download
+            // Clamp progress to valid range
+            if (progress > 70) progress = 70;
+            if (progress < 0) progress = 0;
+        }
         
         // Debug log every 10 iterations to monitor download
         static int debug_counter = 0;

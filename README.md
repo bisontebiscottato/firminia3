@@ -196,7 +196,7 @@ For detailed information about the localization system, see [LANGUAGE_SUPPORT.md
 
 ## 🛡️ Automatic Rollback System
 
-Firminia V3.6.0 includes a comprehensive automatic rollback system that protects the device from corrupted or problematic firmware, ensuring continuous operation and system reliability.
+Firminia V3.6.1 includes a comprehensive automatic rollback system that protects the device from corrupted or problematic firmware, ensuring continuous operation and system reliability.
 
 ### Key Features
 
@@ -306,7 +306,7 @@ firminia3/
 
 ## 🧪 Testing the Rollback System
 
-Firminia V3.6.0 includes a comprehensive test suite to verify the automatic rollback functionality.
+Firminia V3.6.1 includes a comprehensive test suite to verify the automatic rollback functionality.
 
 ### Available Tests
 

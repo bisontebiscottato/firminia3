@@ -2,7 +2,7 @@
 
 ## 📋 **Panoramica**
 
-Questa suite di test verifica il funzionamento del sistema di rollback automatico implementato in Firminia 3.6.0. I test simulano diversi scenari di errore per verificare che il sistema protegga il dispositivo da firmware corrotti o problematici.
+Questa suite di test verifica il funzionamento del sistema di rollback automatico implementato in Firminia 3.6.1. I test simulano diversi scenari di errore per verificare che il sistema protegga il dispositivo da firmware corrotti o problematici.
 
 ## 🎯 **Test Disponibili**
 
@@ -172,7 +172,7 @@ idf.py app-flash --partition-table partitions.csv
 ### **Template di Report**
 ```
 Test Date: [DATA]
-Test Version: Firminia 3.6.0
+Test Version: Firminia 3.6.1
 Hardware: [MODELO DISPOSITIVO]
 
 Test 1 - Firmware Corrotto:
@@ -196,6 +196,6 @@ Test 3 - Validazione Firmware:
 
 ## 🎉 **Conclusione**
 
-Questa suite di test verifica che il sistema di rollback automatico di Firminia 3.6.0 funzioni correttamente e protegga il dispositivo da firmware problematici. I test coprono tutti gli scenari critici e garantiscono la robustezza del sistema.
+Questa suite di test verifica che il sistema di rollback automatico di Firminia 3.6.1 funzioni correttamente e protegga il dispositivo da firmware problematici. I test coprono tutti gli scenari critici e garantiscono la robustezza del sistema.
 
 **⚠️ IMPORTANTE**: Eseguire sempre i test su dispositivi di test, non in produzione!

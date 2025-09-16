@@ -1,5 +1,5 @@
 /*************************************************************
- *                     FIRMINIA 3.6.0                        *
+ *                     FIRMINIA 3.6.1                        *
  *  File: main_flow.c                                        *
  *  Author: Andrea Mancini     E-mail: biso@biso.it          *
  *                                                            *
@@ -55,7 +55,7 @@
 static uint32_t last_ota_check = 0;
 bool ota_in_progress = false;
 static bool force_display_refresh = false;
-#define CURRENT_FIRMWARE_VERSION "3.6.0"
+#define CURRENT_FIRMWARE_VERSION "3.6.1"
 
 // Boot watchdog variables
 static uint32_t boot_start_time = 0;
