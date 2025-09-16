@@ -231,9 +231,9 @@ static const char* translations[STR_COUNT][LANGUAGE_COUNT] = {
     // STR_NO_EDITOR_DOCUMENTS
     {
         "No documents\nwaiting.\nRelax.",  // English
-        "Nessun documento\nin attesa.\nRilassati.", // Italian
-        "Aucun document\nen attente.\nRelax.", // French
-        "Ningun documento\nen espera.\nRelájate."    // Spanish
+        "Nessun\ndocumento\nin attesa.\nRilassati.", // Italian
+        "Aucun\ndocument\nen attente.\nRelax.", // French
+        "Ningun\ndocumento\nen espera.\nRelájate."    // Spanish
     }
 };
 

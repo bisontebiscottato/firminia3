@@ -57,6 +57,11 @@ bool ota_in_progress = false;
 static bool force_display_refresh = false;
 #define CURRENT_FIRMWARE_VERSION "3.6.1"
 
+// API protection variables
+static bool api_call_in_progress = false;
+static uint32_t last_api_call_time = 0;
+#define MIN_API_CALL_INTERVAL_MS 3000  // Minimum 3 seconds between API calls
+
 // Boot watchdog variables
 static uint32_t boot_start_time = 0;
 static bool boot_watchdog_active = false;
@@ -1040,9 +1045,24 @@ static void check_ota_updates(void)
                         }
                         
                         if (hold_time < 1000 && gpio_get_level(BUTTON_GPIO) == 0) {
-                            ESP_LOGI(TAG, "🔘 Short press detected (%lu ms) - triggering immediate API check", hold_time);
-                            last_button_state = 0;
-                            break; // Exit wait loop for immediate API check
+                            ESP_LOGI(TAG, "🔘 Short press detected (%lu ms) - checking API call protection", hold_time);
+                            
+                            // Check if API call is already in progress or too soon after last call
+                            uint32_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+                            if (api_call_in_progress) {
+                                ESP_LOGW(TAG, "⚠️ API call already in progress - ignoring button press");
+                                last_button_state = 0;
+                                continue; // Continue waiting, don't exit loop
+                            } else if ((current_time - last_api_call_time) < MIN_API_CALL_INTERVAL_MS) {
+                                ESP_LOGW(TAG, "⚠️ Too soon after last API call (%lu ms ago) - ignoring button press", 
+                                        current_time - last_api_call_time);
+                                last_button_state = 0;
+                                continue; // Continue waiting, don't exit loop
+                            } else {
+                                ESP_LOGI(TAG, "✅ API call allowed - triggering immediate check");
+                                last_button_state = 0;
+                                break; // Exit wait loop for immediate API check
+                            }
                         } else {
                             ESP_LOGI(TAG, "🔘 Long press detected (%lu ms) - setting flag for main loop", hold_time);
                             ESP_LOGI(TAG, "🔘 Current state: %d", s_current_state);
@@ -1070,8 +1090,18 @@ static void check_ota_updates(void)
             continue; // Go back to main loop start to handle the long press
         }
         
+        // Set API call protection flags
+        api_call_in_progress = true;
+        last_api_call_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        ESP_LOGI(TAG, "🔒 API call protection activated");
+        
         s_current_state = STATE_CHECKING_API;
         display_manager_update(DISPLAY_STATE_CHECKING_API, 0);
+        
+        // Show "Checking..." message for at least 2 seconds for better UX
+        ESP_LOGI(TAG, "⏳ Showing checking message for 2 seconds...");
+        vTaskDelay(pdMS_TO_TICKS(2000));
+        ESP_LOGI(TAG, "✅ 2 seconds delay completed, starting API call");
         
         int practices = -1;
         
@@ -1103,15 +1133,24 @@ static void check_ota_updates(void)
             ESP_LOGE(TAG, "API call failed (network issue, server error, or certificate issue).");
             s_current_state = STATE_API_ERROR;
             display_manager_update(DISPLAY_STATE_API_ERROR, 0);
+            // Clear API call protection flag even on error
+            api_call_in_progress = false;
+            ESP_LOGI(TAG, "🔓 API call protection deactivated (error case)");
         }
         else if (practices > 0) {
             s_current_state = STATE_SHOW_PRACTICES;
             ESP_LOGI(TAG, "Switching state to SHOW_PRACTICES");
             display_manager_update(DISPLAY_STATE_SHOW_PRACTICES, practices);
+            // Clear API call protection flag
+            api_call_in_progress = false;
+            ESP_LOGI(TAG, "🔓 API call protection deactivated");
         }
         else {
             s_current_state = STATE_NO_PRACTICES;
             display_manager_update(DISPLAY_STATE_NO_PRACTICES, 0);
+            // Clear API call protection flag
+            api_call_in_progress = false;
+            ESP_LOGI(TAG, "🔓 API call protection deactivated");
         }
 
           // Check if we need to force display refresh after OTA check feedback
