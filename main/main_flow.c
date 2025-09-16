@@ -39,7 +39,7 @@
 #define BUTTON_POLL_INTERVAL_MS        200     // Polling interval of the button in the waiting loop
 #define OTA_BUTTON_HOLD_TIME_MS        5000    // Time to hold button for OTA update
 #define RESET_BUTTON_HOLD_TIME_MS      10000   // Time to hold button for configuration reset
-#define OTA_CHECK_INTERVAL_MS          3600000UL // OTA check every hour (for testing, normally 6 hours)
+#define OTA_CHECK_INTERVAL_MS          21600000UL // OTA check every 6 hours
 #define BOOT_WATCHDOG_TIMEOUT_MS       30000   // 30 seconds timeout for boot completion
 #define BOOT_HEALTH_CHECK_INTERVAL_MS  5000    // Check every 5 seconds during boot
 
