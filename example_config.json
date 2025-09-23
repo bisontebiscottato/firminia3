@@ -1,4 +1,5 @@
 {
+    "_comment": "Formato tradizionale - tutti i campi richiesti",
     "ssid": "your_wifi_ssid",
     "password": "your_wifi_password",
     "server": "sign.askme.it",
@@ -7,5 +8,6 @@
     "token": "your_api_token",
     "user": "your_user_identifier",
     "interval": "30000",
-    "language": "1"
+    "language": "1",
+    "working_mode": "0"
 } 

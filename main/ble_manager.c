@@ -11,9 +11,11 @@
  #include "esp_gatts_api.h"
  #include "esp_bt_main.h"
  #include "esp_bt_device.h"
- #include "esp_log.h"
- #include "cJSON.h"
- #include "esp_random.h"
+#include "esp_log.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+#include "cJSON.h"
+#include "esp_random.h"
  #include "freertos/FreeRTOS.h"
  #include "freertos/task.h"
  
@@ -215,97 +217,303 @@ static void generate_random_device_name(void)
   * @brief JSON values processing function.
   *
   */
- static void ble_process_received_data(uint8_t *data, uint16_t length)
- {
-     if (length >= MAX_JSON_SIZE) {
-         ESP_LOGE(TAG, "❌ Errore: Dati ricevuti troppo lunghi! (%d bytes, max %d bytes)", length, MAX_JSON_SIZE);
-         return;
-     }
-     
-     data[length] = '\0';
-     ESP_LOGI(TAG, "📥 Ricevuto JSON: %s", (char *)data);
- 
-     cJSON *json = cJSON_Parse((char *)data);
-     if (!json) {
-         ESP_LOGE(TAG, "❌ Errore nel parsing del JSON!");
-         return;
-     }
- 
-     // Extract JSON fields
-     cJSON *ssid_item = cJSON_GetObjectItemCaseSensitive(json, "ssid");
-     cJSON *password_item = cJSON_GetObjectItemCaseSensitive(json, "password");
-     cJSON *server_item = cJSON_GetObjectItemCaseSensitive(json, "server");
-     cJSON *port_item = cJSON_GetObjectItemCaseSensitive(json, "port");
-     cJSON *url_item = cJSON_GetObjectItemCaseSensitive(json, "url");
-     cJSON *token_item = cJSON_GetObjectItemCaseSensitive(json, "token");
-    cJSON *user_item = cJSON_GetObjectItemCaseSensitive(json, "user");
-    cJSON *interval_item = cJSON_GetObjectItemCaseSensitive(json, "interval");
-    cJSON *language_item = cJSON_GetObjectItemCaseSensitive(json, "language");
-    cJSON *working_mode_item = cJSON_GetObjectItemCaseSensitive(json, "working_mode");
-
-    bool valid = true;
- 
-     if (!cJSON_IsString(ssid_item) || !validate_ssid(ssid_item->valuestring)) {
-         ESP_LOGE(TAG, "❌ Campo 'ssid' mancante o non valido");
-         valid = false;
-     }
-     if (!cJSON_IsString(password_item) || !validate_password(password_item->valuestring)) {
-         ESP_LOGE(TAG, "❌ Campo 'password' mancante (anche vuoto va bene, ma deve essere presente)");
-         valid = false;
-     }
-     if (!cJSON_IsString(server_item) || !validate_server(server_item->valuestring)) {
-         ESP_LOGE(TAG, "❌ Campo 'server' mancante o non valido");
-         valid = false;
-     }
-     if (!cJSON_IsString(port_item) || !validate_port(port_item->valuestring)) {
-         ESP_LOGE(TAG, "❌ Campo 'port' mancante o non valido");
-         valid = false;
-     }
-     if (!cJSON_IsString(url_item) || !validate_url(url_item->valuestring)) {
-         ESP_LOGE(TAG, "❌ Campo 'url' mancante o non valido (deve iniziare con \"https://\")");
-         valid = false;
-     }
-     if (!cJSON_IsString(token_item) || !validate_token(token_item->valuestring)) {
-         ESP_LOGE(TAG, "❌ Campo 'token' mancante o non valido (solo numeri e lettere)");
-         valid = false;
-     }
-     if (!cJSON_IsString(user_item) || !validate_user(user_item->valuestring)) {
-         ESP_LOGE(TAG, "❌ Campo 'user' mancante");
-         valid = false;
-     }
-    if (!cJSON_IsString(interval_item) || !validate_interval(interval_item->valuestring)) {
-         ESP_LOGE(TAG, "❌ Campo 'interval' mancante");
-         valid = false;
-     }
-    if (!cJSON_IsString(language_item) || !validate_language(language_item->valuestring)) {
-        ESP_LOGE(TAG, "❌ Campo 'language' mancante o non valido (0=EN, 1=IT, 2=FR, 3=ES)");
-        valid = false;
+static void ble_process_received_data(uint8_t *data, uint16_t length)
+{
+    if (length >= MAX_JSON_SIZE) {
+        ESP_LOGE(TAG, "❌ Errore: Dati ricevuti troppo lunghi! (%d bytes, max %d bytes)", length, MAX_JSON_SIZE);
+        return;
     }
-    if (!cJSON_IsString(working_mode_item) || !validate_working_mode(working_mode_item->valuestring)) {
-        ESP_LOGE(TAG, "❌ Campo 'working_mode' mancante o non valido (0=Signer, 1=Editor)");
-        valid = false;
-    }
-    if (!valid) {
-         ESP_LOGE(TAG, "❌ JSON non valido. Ignoro la configurazione.");
-         cJSON_Delete(json);
-         return;
-     }
- 
-    // Update global configuration variables, if present in JSON
-    strcpy(wifi_ssid, ssid_item->valuestring);
-    strcpy(wifi_password, password_item->valuestring);
-    strcpy(web_server, server_item->valuestring);
-    strcpy(web_port, port_item->valuestring);
-    strcpy(web_url, url_item->valuestring);
-    strcpy(api_token, token_item->valuestring);
-    strcpy(askmesign_user, user_item->valuestring);
-    strcpy(api_interval_ms, interval_item->valuestring);
-    strcpy(language, language_item->valuestring);
-    strcpy(working_mode, working_mode_item->valuestring);
+    
+    data[length] = '\0';
+    ESP_LOGI(TAG, "📥 Ricevuto JSON: %s", (char *)data);
 
-    // Save the updated configuration to NVS
-    save_config_to_nvs();
-    ESP_LOGI(TAG, "✅ Configurazione aggiornata e salvata in NVS!");
+    cJSON *json = cJSON_Parse((char *)data);
+    if (!json) {
+        ESP_LOGE(TAG, "❌ Errore nel parsing del JSON!");
+        return;
+    }
+
+    // Check if this is a partial update JSON (contains update flags)
+    cJSON *update_flag_check = cJSON_GetObjectItemCaseSensitive(json, "_updated_ssid");
+    bool is_partial_update = (update_flag_check != NULL);
+    
+    if (is_partial_update) {
+        ESP_LOGI(TAG, "🔄 Rilevato JSON con aggiornamenti parziali (con flag)");
+        
+        // Extract update flags
+        cJSON *updated_ssid = cJSON_GetObjectItemCaseSensitive(json, "_updated_ssid");
+        cJSON *updated_password = cJSON_GetObjectItemCaseSensitive(json, "_updated_password");
+        cJSON *updated_server = cJSON_GetObjectItemCaseSensitive(json, "_updated_server");
+        cJSON *updated_port = cJSON_GetObjectItemCaseSensitive(json, "_updated_port");
+        cJSON *updated_url = cJSON_GetObjectItemCaseSensitive(json, "_updated_url");
+        cJSON *updated_token = cJSON_GetObjectItemCaseSensitive(json, "_updated_token");
+        cJSON *updated_user = cJSON_GetObjectItemCaseSensitive(json, "_updated_user");
+        cJSON *updated_interval = cJSON_GetObjectItemCaseSensitive(json, "_updated_interval");
+        cJSON *updated_language = cJSON_GetObjectItemCaseSensitive(json, "_updated_language");
+        cJSON *updated_working_mode = cJSON_GetObjectItemCaseSensitive(json, "_updated_working_mode");
+
+        // Extract configuration fields
+        cJSON *ssid_item = cJSON_GetObjectItemCaseSensitive(json, "ssid");
+        cJSON *password_item = cJSON_GetObjectItemCaseSensitive(json, "password");
+        cJSON *server_item = cJSON_GetObjectItemCaseSensitive(json, "server");
+        cJSON *port_item = cJSON_GetObjectItemCaseSensitive(json, "port");
+        cJSON *url_item = cJSON_GetObjectItemCaseSensitive(json, "url");
+        cJSON *token_item = cJSON_GetObjectItemCaseSensitive(json, "token");
+        cJSON *user_item = cJSON_GetObjectItemCaseSensitive(json, "user");
+        cJSON *interval_item = cJSON_GetObjectItemCaseSensitive(json, "interval");
+        cJSON *language_item = cJSON_GetObjectItemCaseSensitive(json, "language");
+        cJSON *working_mode_item = cJSON_GetObjectItemCaseSensitive(json, "working_mode");
+
+        bool valid = true;
+        bool any_field_updated = false;
+
+        // Validate and update only fields marked for update
+        if (cJSON_IsTrue(updated_ssid)) {
+            if (!cJSON_IsString(ssid_item) || !validate_ssid(ssid_item->valuestring)) {
+                ESP_LOGE(TAG, "❌ Campo 'ssid' marcato per aggiornamento ma non valido");
+                valid = false;
+            } else {
+                strcpy(wifi_ssid, ssid_item->valuestring);
+                ESP_LOGI(TAG, "✅ SSID aggiornato: %s", wifi_ssid);
+                any_field_updated = true;
+            }
+        }
+
+        if (cJSON_IsTrue(updated_password)) {
+            if (!cJSON_IsString(password_item) || !validate_password(password_item->valuestring)) {
+                ESP_LOGE(TAG, "❌ Campo 'password' marcato per aggiornamento ma non valido");
+                valid = false;
+            } else {
+                strcpy(wifi_password, password_item->valuestring);
+                ESP_LOGI(TAG, "✅ Password WiFi aggiornata");
+                any_field_updated = true;
+            }
+        }
+
+        if (cJSON_IsTrue(updated_server)) {
+            if (!cJSON_IsString(server_item) || !validate_server(server_item->valuestring)) {
+                ESP_LOGE(TAG, "❌ Campo 'server' marcato per aggiornamento ma non valido");
+                valid = false;
+            } else {
+                strcpy(web_server, server_item->valuestring);
+                ESP_LOGI(TAG, "✅ Server aggiornato: %s", web_server);
+                any_field_updated = true;
+            }
+        }
+
+        if (cJSON_IsTrue(updated_port)) {
+            if (!cJSON_IsString(port_item) || !validate_port(port_item->valuestring)) {
+                ESP_LOGE(TAG, "❌ Campo 'port' marcato per aggiornamento ma non valido");
+                valid = false;
+            } else {
+                strcpy(web_port, port_item->valuestring);
+                ESP_LOGI(TAG, "✅ Porta aggiornata: %s", web_port);
+                any_field_updated = true;
+            }
+        }
+
+        if (cJSON_IsTrue(updated_url)) {
+            if (!cJSON_IsString(url_item) || !validate_url(url_item->valuestring)) {
+                ESP_LOGE(TAG, "❌ Campo 'url' marcato per aggiornamento ma non valido");
+                valid = false;
+            } else {
+                strcpy(web_url, url_item->valuestring);
+                ESP_LOGI(TAG, "✅ URL aggiornato: %s", web_url);
+                any_field_updated = true;
+            }
+        }
+
+        if (cJSON_IsTrue(updated_token)) {
+            if (!cJSON_IsString(token_item) || !validate_token(token_item->valuestring)) {
+                ESP_LOGE(TAG, "❌ Campo 'token' marcato per aggiornamento ma non valido");
+                valid = false;
+            } else {
+                strcpy(api_token, token_item->valuestring);
+                ESP_LOGI(TAG, "✅ Token API aggiornato");
+                any_field_updated = true;
+            }
+        }
+
+        if (cJSON_IsTrue(updated_user)) {
+            if (!cJSON_IsString(user_item) || !validate_user(user_item->valuestring)) {
+                ESP_LOGE(TAG, "❌ Campo 'user' marcato per aggiornamento ma non valido");
+                valid = false;
+            } else {
+                strcpy(askmesign_user, user_item->valuestring);
+                ESP_LOGI(TAG, "✅ Utente aggiornato: %s", askmesign_user);
+                any_field_updated = true;
+            }
+        }
+
+        if (cJSON_IsTrue(updated_interval)) {
+            if (!cJSON_IsString(interval_item) || !validate_interval(interval_item->valuestring)) {
+                ESP_LOGE(TAG, "❌ Campo 'interval' marcato per aggiornamento ma non valido");
+                valid = false;
+            } else {
+                strcpy(api_interval_ms, interval_item->valuestring);
+                ESP_LOGI(TAG, "✅ Intervallo API aggiornato: %s ms", api_interval_ms);
+                any_field_updated = true;
+            }
+        }
+
+        if (cJSON_IsTrue(updated_language)) {
+            if (!cJSON_IsString(language_item) || !validate_language(language_item->valuestring)) {
+                ESP_LOGE(TAG, "❌ Campo 'language' marcato per aggiornamento ma non valido");
+                valid = false;
+            } else {
+                strcpy(language, language_item->valuestring);
+                ESP_LOGI(TAG, "✅ Lingua aggiornata: %s", language);
+                any_field_updated = true;
+            }
+        }
+
+        if (cJSON_IsTrue(updated_working_mode)) {
+            if (!cJSON_IsString(working_mode_item) || !validate_working_mode(working_mode_item->valuestring)) {
+                ESP_LOGE(TAG, "❌ Campo 'working_mode' marcato per aggiornamento ma non valido");
+                valid = false;
+            } else {
+                strcpy(working_mode, working_mode_item->valuestring);
+                ESP_LOGI(TAG, "✅ Modalità di lavoro aggiornata: %s (%s)", working_mode, 
+                         (strcmp(working_mode, WORKING_MODE_EDITOR) == 0) ? "Editor" : "Signer");
+                any_field_updated = true;
+            }
+        }
+
+        if (!valid) {
+            ESP_LOGE(TAG, "❌ JSON con aggiornamenti parziali non valido. Ignoro la configurazione.");
+            cJSON_Delete(json);
+            return;
+        }
+
+        if (!any_field_updated) {
+            ESP_LOGW(TAG, "⚠️ Nessun campo marcato per l'aggiornamento. Configurazione non modificata.");
+            cJSON_Delete(json);
+            return;
+        }
+
+        // In modalità parziale, salviamo solo i campi aggiornati in NVS
+        nvs_handle_t handle;
+        esp_err_t err = nvs_open("config", NVS_READWRITE, &handle);
+        if (err == ESP_OK) {
+            // Salva solo i campi che sono stati aggiornati
+            if (cJSON_IsTrue(updated_ssid)) {
+                nvs_set_str(handle, "wifi_ssid", wifi_ssid);
+            }
+            if (cJSON_IsTrue(updated_password)) {
+                nvs_set_str(handle, "wifi_password", wifi_password);
+            }
+            if (cJSON_IsTrue(updated_server)) {
+                nvs_set_str(handle, "web_server", web_server);
+            }
+            if (cJSON_IsTrue(updated_port)) {
+                nvs_set_str(handle, "web_port", web_port);
+            }
+            if (cJSON_IsTrue(updated_url)) {
+                nvs_set_str(handle, "web_url", web_url);
+            }
+            if (cJSON_IsTrue(updated_token)) {
+                nvs_set_str(handle, "api_token", api_token);
+            }
+            if (cJSON_IsTrue(updated_user)) {
+                nvs_set_str(handle, "askmesign_user", askmesign_user);
+            }
+            if (cJSON_IsTrue(updated_interval)) {
+                nvs_set_str(handle, "api_interval_ms", api_interval_ms);
+            }
+            if (cJSON_IsTrue(updated_language)) {
+                nvs_set_str(handle, "language", language);
+            }
+            if (cJSON_IsTrue(updated_working_mode)) {
+                nvs_set_str(handle, "working_mode", working_mode);
+            }
+            
+            nvs_commit(handle);
+            nvs_close(handle);
+            ESP_LOGI(TAG, "✅ Configurazione parziale aggiornata e salvata in NVS!");
+        } else {
+            ESP_LOGE(TAG, "❌ Errore apertura NVS per salvataggio parziale: %s", esp_err_to_name(err));
+        }
+        
+    } else {
+        ESP_LOGI(TAG, "📋 Rilevato JSON tradizionale (configurazione completa)");
+        
+        // Extract JSON fields (traditional mode - all fields required)
+        cJSON *ssid_item = cJSON_GetObjectItemCaseSensitive(json, "ssid");
+        cJSON *password_item = cJSON_GetObjectItemCaseSensitive(json, "password");
+        cJSON *server_item = cJSON_GetObjectItemCaseSensitive(json, "server");
+        cJSON *port_item = cJSON_GetObjectItemCaseSensitive(json, "port");
+        cJSON *url_item = cJSON_GetObjectItemCaseSensitive(json, "url");
+        cJSON *token_item = cJSON_GetObjectItemCaseSensitive(json, "token");
+        cJSON *user_item = cJSON_GetObjectItemCaseSensitive(json, "user");
+        cJSON *interval_item = cJSON_GetObjectItemCaseSensitive(json, "interval");
+        cJSON *language_item = cJSON_GetObjectItemCaseSensitive(json, "language");
+        cJSON *working_mode_item = cJSON_GetObjectItemCaseSensitive(json, "working_mode");
+
+        bool valid = true;
+
+        if (!cJSON_IsString(ssid_item) || !validate_ssid(ssid_item->valuestring)) {
+            ESP_LOGE(TAG, "❌ Campo 'ssid' mancante o non valido");
+            valid = false;
+        }
+        if (!cJSON_IsString(password_item) || !validate_password(password_item->valuestring)) {
+            ESP_LOGE(TAG, "❌ Campo 'password' mancante (anche vuoto va bene, ma deve essere presente)");
+            valid = false;
+        }
+        if (!cJSON_IsString(server_item) || !validate_server(server_item->valuestring)) {
+            ESP_LOGE(TAG, "❌ Campo 'server' mancante o non valido");
+            valid = false;
+        }
+        if (!cJSON_IsString(port_item) || !validate_port(port_item->valuestring)) {
+            ESP_LOGE(TAG, "❌ Campo 'port' mancante o non valido");
+            valid = false;
+        }
+        if (!cJSON_IsString(url_item) || !validate_url(url_item->valuestring)) {
+            ESP_LOGE(TAG, "❌ Campo 'url' mancante o non valido (deve iniziare con \"https://\")");
+            valid = false;
+        }
+        if (!cJSON_IsString(token_item) || !validate_token(token_item->valuestring)) {
+            ESP_LOGE(TAG, "❌ Campo 'token' mancante o non valido (solo numeri e lettere)");
+            valid = false;
+        }
+        if (!cJSON_IsString(user_item) || !validate_user(user_item->valuestring)) {
+            ESP_LOGE(TAG, "❌ Campo 'user' mancante");
+            valid = false;
+        }
+        if (!cJSON_IsString(interval_item) || !validate_interval(interval_item->valuestring)) {
+            ESP_LOGE(TAG, "❌ Campo 'interval' mancante");
+            valid = false;
+        }
+        if (!cJSON_IsString(language_item) || !validate_language(language_item->valuestring)) {
+            ESP_LOGE(TAG, "❌ Campo 'language' mancante o non valido (0=EN, 1=IT, 2=FR, 3=ES)");
+            valid = false;
+        }
+        if (!cJSON_IsString(working_mode_item) || !validate_working_mode(working_mode_item->valuestring)) {
+            ESP_LOGE(TAG, "❌ Campo 'working_mode' mancante o non valido (0=Signer, 1=Editor)");
+            valid = false;
+        }
+        
+        if (!valid) {
+            ESP_LOGE(TAG, "❌ JSON tradizionale non valido. Ignoro la configurazione.");
+            cJSON_Delete(json);
+            return;
+        }
+
+        // Update all global configuration variables (traditional mode)
+        strcpy(wifi_ssid, ssid_item->valuestring);
+        strcpy(wifi_password, password_item->valuestring);
+        strcpy(web_server, server_item->valuestring);
+        strcpy(web_port, port_item->valuestring);
+        strcpy(web_url, url_item->valuestring);
+        strcpy(api_token, token_item->valuestring);
+        strcpy(askmesign_user, user_item->valuestring);
+        strcpy(api_interval_ms, interval_item->valuestring);
+        strcpy(language, language_item->valuestring);
+        strcpy(working_mode, working_mode_item->valuestring);
+        // Save the updated configuration to NVS (traditional mode only)
+        save_config_to_nvs();
+        ESP_LOGI(TAG, "✅ Configurazione completa aggiornata e salvata in NVS!");
+    }
+
     ESP_LOGI(TAG, "📝 Working Mode configured: %s (%s)", working_mode, 
              (strcmp(working_mode, WORKING_MODE_EDITOR) == 0) ? "Editor" : "Signer");
  

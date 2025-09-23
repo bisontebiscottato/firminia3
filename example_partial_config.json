@@ -1,0 +1,23 @@
+{
+    "_comment": "Formato con aggiornamenti parziali - solo i campi con flag true vengono aggiornati",
+    "ssid": "NewWiFi",
+    "password": "newpassword123",
+    "server": "sign.askme.it",
+    "port": "443",
+    "url": "https://sign.askme.it/api/v2/files/pending?page=0&size=1",
+    "token": "abc123",
+    "user": "mario.rossi",
+    "interval": "300000",
+    "language": "0",
+    "working_mode": "0",
+    "_updated_ssid": true,
+    "_updated_password": true,
+    "_updated_server": false,
+    "_updated_port": false,
+    "_updated_url": false,
+    "_updated_token": false,
+    "_updated_user": false,
+    "_updated_interval": true,
+    "_updated_language": false,
+    "_updated_working_mode": false
+}

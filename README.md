@@ -125,7 +125,10 @@ Firminia V3 comes with a custom 3D-printed case designed for optimal component p
 
 ### JSON Configuration via BLE
 
-Configure Firminia easily using the following JSON structure sent through a BLE app:
+Firminia supports **two JSON formats** for configuration:
+
+#### 1. **Traditional Format** (Full Configuration)
+Configure all parameters at once using this JSON structure:
 
 ```json
 {
@@ -137,9 +140,33 @@ Configure Firminia easily using the following JSON structure sent through a BLE 
     "token": "your_api_token",
     "user": "your_user_identifier",
     "interval": "30000",
-    "language": "0"
+    "language": "0",
+    "working_mode": "0"
 }
 ```
+
+#### 2. **Partial Update Format** (New! 🆕)
+Update only specific parameters using update flags:
+
+```json
+{
+    "ssid": "NewWiFi",
+    "password": "newpassword",
+    "interval": "60000",
+    "_updated_ssid": true,
+    "_updated_password": true,
+    "_updated_server": false,
+    "_updated_port": false,
+    "_updated_url": false,
+    "_updated_token": false,
+    "_updated_user": false,
+    "_updated_interval": true,
+    "_updated_language": false,
+    "_updated_working_mode": false
+}
+```
+
+> **📖 For detailed information about the new partial update format, see [PARTIAL_UPDATE_JSON_GUIDE.md](PARTIAL_UPDATE_JSON_GUIDE.md)**
 
 ### React TypeScript Configuration App
 
